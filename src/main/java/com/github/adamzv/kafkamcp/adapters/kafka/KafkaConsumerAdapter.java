@@ -18,7 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
@@ -92,7 +91,7 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
 
     DescribeTopicsResult result = adminClient.describeTopics(List.of(request.topic()), options);
     Map<String, TopicDescription> descriptions = await(
-        result.all(),
+        result.allTopicNames(),
         "describeTopicForTail",
         Map.of("topic", request.topic())
     );

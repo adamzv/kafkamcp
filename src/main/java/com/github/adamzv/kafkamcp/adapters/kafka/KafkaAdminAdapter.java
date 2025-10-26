@@ -28,7 +28,6 @@ import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
-import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsSpec;
 import org.apache.kafka.clients.admin.ListConsumerGroupsOptions;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsOptions;
@@ -79,12 +78,12 @@ public class KafkaAdminAdapter implements KafkaAdminPort {
 
     DescribeTopicsResult result = adminClient.describeTopics(topicNames, options);
     Map<String, TopicDescription> description = await(
-        result.all(),
+        result.allTopicNames(),
         "describeTopics",
         Map.of("topics", List.copyOf(topicNames))
     );
 
-    Map<String, TopicInfo> mapped = new HashMap<>(description.size());
+    Map<String, TopicInfo> mapped = HashMap.newHashMap(description.size());
     for (Map.Entry<String, TopicDescription> entry : description.entrySet()) {
       TopicDescription value = entry.getValue();
       short replication = value.partitions().isEmpty()
@@ -160,7 +159,7 @@ public class KafkaAdminAdapter implements KafkaAdminPort {
 
     DescribeTopicsResult result = adminClient.describeTopics(List.of(topicName), options);
     Map<String, TopicDescription> description = await(
-        result.all(),
+        result.allTopicNames(),
         "describeTopic",
         Map.of("topic", topicName)
     );
@@ -232,7 +231,7 @@ public class KafkaAdminAdapter implements KafkaAdminPort {
 
     // Build member details with partition assignments
     List<ConsumerGroupMember> members = description.members().stream()
-        .map(member -> buildMemberDetail(member))
+        .map(this::buildMemberDetail)
         .toList();
 
     // Calculate lag for all partitions

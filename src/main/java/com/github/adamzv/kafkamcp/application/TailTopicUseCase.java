@@ -18,9 +18,9 @@ import java.util.regex.Pattern;
 @Component
 public class TailTopicUseCase {
 
-  private static final Pattern END_PATTERN = Pattern.compile("^end-([0-9]+)$");
-  private static final Pattern OFFSET_PATTERN = Pattern.compile("^offset:([0-9]+)$");
-  private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("^timestamp:([0-9]+)$");
+  private static final Pattern END_PATTERN = Pattern.compile("^end-(\\d+)$");
+  private static final Pattern OFFSET_PATTERN = Pattern.compile("^offset:(\\d+)$");
+  private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("^timestamp:(\\d+)$");
 
   private final KafkaConsumerPort consumerPort;
   private final ObjectMapper objectMapper;
