@@ -66,7 +66,8 @@ public class KafkaTools {
   }
 
   @Tool(name = "listTopics", description = "List Kafka topics, optionally filtered by prefix")
-  public List<TopicInfo> listTopics(String prefix) {
+  public List<TopicInfo> listTopics(ListTopicsInput input) {
+    String prefix = input != null ? input.prefix() : null;
     return invoke(
         "listTopics",
         () -> listTopicsUseCase.execute(prefix),
@@ -145,7 +146,8 @@ public class KafkaTools {
   }
 
   @Tool(name = "listConsumerGroups", description = "List Kafka consumer groups")
-  public List<Map<String, Object>> listConsumerGroups(String prefix) {
+  public List<Map<String, Object>> listConsumerGroups(ListConsumerGroupsInput input) {
+    String prefix = input != null ? input.prefix() : null;
     return invoke(
         "listConsumerGroups",
         () -> listConsumerGroupsUseCase.execute(prefix),
@@ -262,7 +264,11 @@ public class KafkaTools {
     return value == null ? 0L : value.getBytes(StandardCharsets.UTF_8).length;
   }
 
+  public record ListTopicsInput(String prefix) {}
+
   public record DescribeTopicInput(String topic) {}
+
+  public record ListConsumerGroupsInput(String prefix) {}
 
   public record DescribeConsumerGroupInput(String groupId) {}
 

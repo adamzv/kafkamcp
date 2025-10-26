@@ -80,4 +80,41 @@ class TailTopicUseCaseTest {
     ProblemException exception = assertThrows(ProblemException.class, () -> useCase.execute(input));
     assertEquals(ProblemCodes.INVALID_ARGUMENT, exception.problem().code());
   }
+
+  @Test
+  void acceptsEarliestPosition() {
+    TailRequest input = new TailRequest("demo", "earliest", 10, null);
+    List<MessageEnvelope> result = useCase.execute(input);
+
+    assertEquals(1, result.size());
+    TailRequest normalized = captured.get();
+    assertEquals("earliest", normalized.from());
+  }
+
+  @Test
+  void acceptsLatestPosition() {
+    TailRequest input = new TailRequest("demo", "latest", 10, null);
+    List<MessageEnvelope> result = useCase.execute(input);
+
+    assertEquals(1, result.size());
+    TailRequest normalized = captured.get();
+    assertEquals("latest", normalized.from());
+  }
+
+  @Test
+  void acceptsTimestampPosition() {
+    TailRequest input = new TailRequest("demo", "timestamp:1234567890", 10, null);
+    List<MessageEnvelope> result = useCase.execute(input);
+
+    assertEquals(1, result.size());
+    TailRequest normalized = captured.get();
+    assertEquals("timestamp:1234567890", normalized.from());
+  }
+
+  @Test
+  void rejectsNegativeTimestamp() {
+    TailRequest input = new TailRequest("demo", "timestamp:-1", 10, null);
+    ProblemException exception = assertThrows(ProblemException.class, () -> useCase.execute(input));
+    assertEquals(ProblemCodes.INVALID_ARGUMENT, exception.problem().code());
+  }
 }

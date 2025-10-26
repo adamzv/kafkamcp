@@ -2,7 +2,10 @@ package com.github.adamzv.kafkamcp.adapters.kafka;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
 import com.github.adamzv.kafkamcp.domain.Limits;
 import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
 import com.github.adamzv.kafkamcp.domain.ProduceRequest;
@@ -113,5 +116,106 @@ class KafkaAdaptersIntegrationTest {
     TopicPartitionDetail partition = description.partitions().getFirst();
     assertEquals(0, partition.partition());
     assertFalse(partition.replicas().isEmpty());
+  }
+
+  @Test
+  void multiPartitionTailSortsByTimestamp() throws Exception {
+    String topic = "multi-partition-demo";
+    adminClient.createTopics(List.of(new NewTopic(topic, 3, (short) 1)))
+        .all()
+        .get(10, TimeUnit.SECONDS);
+
+    // Produce messages to different partitions with controlled timestamps
+    ProduceRequest request1 = new ProduceRequest(topic, "raw-string", "key1", Map.of(), "message-1");
+    producerAdapter.produce(request1);
+    Thread.sleep(100); // Ensure different timestamps
+
+    ProduceRequest request2 = new ProduceRequest(topic, "raw-string", "key2", Map.of(), "message-2");
+    producerAdapter.produce(request2);
+    Thread.sleep(100);
+
+    ProduceRequest request3 = new ProduceRequest(topic, "raw-string", "key3", Map.of(), "message-3");
+    producerAdapter.produce(request3);
+
+    // Tail from all partitions
+    TailRequest tailRequest = new TailRequest(topic, "earliest", 10, null);
+    List<MessageEnvelope> messages = consumerAdapter.tail(tailRequest, limits);
+
+    // Should have messages from multiple partitions, sorted by timestamp
+    assertTrue(messages.size() >= 3, "Should have at least 3 messages");
+
+    // Verify messages are sorted by timestamp
+    for (int i = 1; i < messages.size(); i++) {
+      long prevTimestamp = messages.get(i - 1).timestamp();
+      long currentTimestamp = messages.get(i).timestamp();
+      assertTrue(prevTimestamp <= currentTimestamp,
+          "Messages should be sorted by timestamp, but message at index " + (i - 1) +
+          " has timestamp " + prevTimestamp + " > message at index " + i +
+          " with timestamp " + currentTimestamp);
+    }
+  }
+
+  @Test
+  void describeConsumerGroupReturnsLagInformation() throws Exception {
+    String topic = "consumer-group-demo";
+    String groupId = "test-consumer-group";
+
+    adminClient.createTopics(List.of(new NewTopic(topic, 2, (short) 1)))
+        .all()
+        .get(10, TimeUnit.SECONDS);
+
+    // Produce some messages
+    for (int i = 0; i < 5; i++) {
+      ProduceRequest request = new ProduceRequest(
+          topic,
+          "raw-string",
+          "key-" + i,
+          Map.of(),
+          "message-" + i
+      );
+      producerAdapter.produce(request);
+    }
+
+    // Create a consumer and commit offsets
+    java.util.Properties consumerProps = new java.util.Properties();
+    consumerProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+        KAFKA.getBootstrapServers());
+    consumerProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    consumerProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+        org.apache.kafka.common.serialization.StringDeserializer.class.getName());
+    consumerProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+        org.apache.kafka.common.serialization.StringDeserializer.class.getName());
+    consumerProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    try (org.apache.kafka.clients.consumer.KafkaConsumer<String, String> consumer =
+             new org.apache.kafka.clients.consumer.KafkaConsumer<>(consumerProps)) {
+      consumer.subscribe(List.of(topic));
+      // Poll and commit offsets
+      consumer.poll(Duration.ofSeconds(5));
+      consumer.commitSync();
+    }
+
+    // Wait a bit for the consumer group metadata to be available
+    Thread.sleep(1000);
+
+    // Now describe the consumer group
+    ConsumerGroupDetail detail = adminAdapter.describeConsumerGroup(groupId);
+
+    assertNotNull(detail);
+    assertEquals(groupId, detail.groupId());
+    assertNotNull(detail.state());
+    assertNotNull(detail.lag());
+
+    // Verify lag information exists
+    assertFalse(detail.lag().isEmpty(), "Should have lag information for partitions");
+
+    // Check that lag values are calculated correctly
+    detail.lag().forEach(lagInfo -> {
+      assertEquals(topic, lagInfo.topic());
+      assertNotNull(lagInfo.currentOffset(), "Current offset should not be null");
+      assertNotNull(lagInfo.endOffset(), "End offset should not be null");
+      assertNotNull(lagInfo.lag(), "Lag should not be null");
+      assertTrue(lagInfo.lag() >= 0, "Lag should be non-negative");
+    });
   }
 }
