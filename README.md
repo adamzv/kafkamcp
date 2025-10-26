@@ -147,6 +147,18 @@ docker run --rm -p 8080:8080 \
 
 Add `-e MCP_BASE_URL` or other environment overrides as needed. The container exposes port `8080` by default and runs as an unprivileged user.
 
+#### Native Image Variant
+For smaller images and faster start-up you can build the GraalVM native image container:
+
+```bash
+docker build -f Dockerfile.native -t kafka-mcp-native .
+docker run --rm -p 8080:8080 \
+  -e KAFKA_BOOTSTRAP_SERVERS=host.docker.internal:29092 \
+  kafka-mcp-native
+```
+
+This uses GraalVM’s `native-maven-plugin` (activated via `-Pnative`) and can take several minutes plus a few gigabytes of RAM during compilation.
+
 ### Metrics
 
 The Prometheus registry is on the classpath and exposed through Spring Boot Actuator. Once the app is running you can scrape:
