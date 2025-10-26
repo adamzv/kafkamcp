@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: kafka-mcp
+  ai:
+    mcp:
+      server:
+        name: kafka-mcp
+        version: 0.1.0
+        stdio: true
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+        instructions: >
+          Read and produce to Kafka with bounded results.
+          Formats: raw-string, json. No admin mutations.
+
+kafka:
+  bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+limits:
+  messagesPerCall: ${LIMIT_MESSAGES_PER_CALL:200} # 200 messages per call
+  bytesPerCall: ${LIMIT_BYTES_PER_CALL:1048576}   # 1 MiB
+  messageBytes: ${LIMIT_MESSAGE_BYTES:262144}     # 256 KiB
+
+# Reserved for future security configuration (v1.1)
+# kafka:
+#   security:
+#     sasl:
+#       enabled: ${KAFKA_SASL_ENABLED:false}
