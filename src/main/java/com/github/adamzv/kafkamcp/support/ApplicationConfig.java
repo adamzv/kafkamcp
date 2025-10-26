@@ -1,5 +1,6 @@
 package com.github.adamzv.kafkamcp.support;
 
+import com.github.adamzv.kafkamcp.adapters.mcp.KafkaTools;
 import com.github.adamzv.kafkamcp.domain.Limits;
 import java.time.Duration;
 import java.util.Properties;
@@ -9,6 +10,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,5 +53,13 @@ public class ApplicationConfig {
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     return new KafkaProducer<>(props);
+  }
+
+  @Bean
+  public ToolCallbackProvider kafkaToolsProvider(KafkaTools kafkaTools) {
+    return MethodToolCallbackProvider
+        .builder()
+        .toolObjects(kafkaTools)
+        .build();
   }
 }

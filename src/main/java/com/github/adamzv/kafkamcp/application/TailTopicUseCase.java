@@ -63,6 +63,9 @@ public class TailTopicUseCase {
   private String normalizeFrom(String from) {
     String value = (from == null || from.isBlank()) ? "end-50" : from.trim();
 
+    if (value.equals("earliest") || value.equals("latest")) {
+      return value;
+    }
     if (END_PATTERN.matcher(value).matches()) {
       return value;
     }

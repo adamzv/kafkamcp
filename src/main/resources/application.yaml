@@ -6,7 +6,10 @@ spring:
       server:
         name: kafka-mcp
         version: 0.1.0
-        stdio: true
+        stdio: false
+        base-url: ${MCP_BASE_URL:http://localhost:${SERVER_PORT:8080}}
+        sse-endpoint: /sse
+        sse-message-endpoint: /mcp/message
         capabilities:
           tool: true
           resource: false
@@ -16,15 +19,30 @@ spring:
           Formats: raw-string, json. No admin mutations.
 
 kafka:
-  bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
 
 limits:
   messagesPerCall: ${LIMIT_MESSAGES_PER_CALL:200} # 200 messages per call
   bytesPerCall: ${LIMIT_BYTES_PER_CALL:1048576}   # 1 MiB
   messageBytes: ${LIMIT_MESSAGE_BYTES:262144}     # 256 KiB
 
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info
+  endpoint:
+    prometheus:
+      enabled: true
+
 # Reserved for future security configuration (v1.1)
 # kafka:
 #   security:
 #     sasl:
 #       enabled: ${KAFKA_SASL_ENABLED:false}
+logging:
+  level:
+    com.github.adamzv: debug

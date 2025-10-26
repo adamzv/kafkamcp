@@ -42,7 +42,7 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
 
   private static final Duration ADMIN_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration POLL_TIMEOUT = Duration.ofMillis(300);
-  private static final Duration CALL_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration CALL_TIMEOUT = Duration.ofSeconds(2);
 
   private final AdminClient adminClient;
   private final KafkaProperties kafkaProperties;
@@ -122,6 +122,16 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
   private void applyStartingPosition(Consumer<String, String> consumer,
                                      List<TopicPartition> partitions,
                                      String from) {
+    if (from.equals("earliest")) {
+      consumer.seekToBeginning(partitions);
+      return;
+    }
+
+    if (from.equals("latest")) {
+      consumer.seekToEnd(partitions);
+      return;
+    }
+
     if (from.startsWith("end-")) {
       long count = Long.parseLong(from.substring(4));
       Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
