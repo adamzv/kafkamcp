@@ -229,6 +229,20 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
       }
     }
 
+    // Sort messages by timestamp for consistent ordering across partitions
+    messages.sort((m1, m2) -> {
+      int timestampCompare = Long.compare(m1.timestamp(), m2.timestamp());
+      if (timestampCompare != 0) {
+        return timestampCompare;
+      }
+      // If timestamps are equal, sort by partition and then offset
+      int partitionCompare = Integer.compare(m1.partition(), m2.partition());
+      if (partitionCompare != 0) {
+        return partitionCompare;
+      }
+      return Long.compare(m1.offset(), m2.offset());
+    });
+
     return List.copyOf(messages);
   }
 

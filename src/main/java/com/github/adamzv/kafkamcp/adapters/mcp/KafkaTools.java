@@ -1,11 +1,13 @@
 package com.github.adamzv.kafkamcp.adapters.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.adamzv.kafkamcp.application.DescribeConsumerGroupUseCase;
 import com.github.adamzv.kafkamcp.application.DescribeTopicUseCase;
 import com.github.adamzv.kafkamcp.application.ListConsumerGroupsUseCase;
 import com.github.adamzv.kafkamcp.application.ListTopicsUseCase;
 import com.github.adamzv.kafkamcp.application.ProduceMessageUseCase;
 import com.github.adamzv.kafkamcp.application.TailTopicUseCase;
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
 import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
 import com.github.adamzv.kafkamcp.domain.Problem;
 import com.github.adamzv.kafkamcp.domain.ProblemException;
@@ -40,6 +42,7 @@ public class KafkaTools {
   private final ProduceMessageUseCase produceMessageUseCase;
   private final TailTopicUseCase tailTopicUseCase;
   private final ListConsumerGroupsUseCase listConsumerGroupsUseCase;
+  private final DescribeConsumerGroupUseCase describeConsumerGroupUseCase;
   private final ObjectMapper objectMapper;
   private final MeterRegistry meterRegistry;
 
@@ -49,6 +52,7 @@ public class KafkaTools {
       ProduceMessageUseCase produceMessageUseCase,
       TailTopicUseCase tailTopicUseCase,
       ListConsumerGroupsUseCase listConsumerGroupsUseCase,
+      DescribeConsumerGroupUseCase describeConsumerGroupUseCase,
       ObjectMapper objectMapper,
       MeterRegistry meterRegistry) {
     this.listTopicsUseCase = listTopicsUseCase;
@@ -56,6 +60,7 @@ public class KafkaTools {
     this.produceMessageUseCase = produceMessageUseCase;
     this.tailTopicUseCase = tailTopicUseCase;
     this.listConsumerGroupsUseCase = listConsumerGroupsUseCase;
+    this.describeConsumerGroupUseCase = describeConsumerGroupUseCase;
     this.objectMapper = objectMapper;
     this.meterRegistry = meterRegistry;
   }
@@ -153,6 +158,25 @@ public class KafkaTools {
     );
   }
 
+  @Tool(name = "describeConsumerGroup", description = "Describe a consumer group with partition assignments and lag details")
+  public ConsumerGroupDetail describeConsumerGroup(DescribeConsumerGroupInput input) {
+    return invoke(
+        "describeConsumerGroup",
+        () -> describeConsumerGroupUseCase.execute(input.groupId()),
+        detail -> new ToolTelemetry(
+            detail.lag().size(),
+            0L,
+            contextOf(
+                "groupId", detail.groupId(),
+                "state", detail.state(),
+                "memberCount", detail.members().size(),
+                "partitionCount", detail.lag().size()
+            )
+        ),
+        contextOf("groupId", input.groupId())
+    );
+  }
+
   private <T> T invoke(String tool,
                       Supplier<T> action,
                       Function<T, ToolTelemetry> summarizer,
@@ -239,6 +263,8 @@ public class KafkaTools {
   }
 
   public record DescribeTopicInput(String topic) {}
+
+  public record DescribeConsumerGroupInput(String groupId) {}
 
   private record ToolTelemetry(long messages, long bytes, Map<String, Object> extraContext) {}
 

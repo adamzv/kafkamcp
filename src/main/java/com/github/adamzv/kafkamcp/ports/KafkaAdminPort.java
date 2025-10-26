@@ -1,5 +1,6 @@
 package com.github.adamzv.kafkamcp.ports;
 
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
 import com.github.adamzv.kafkamcp.domain.TopicInfo;
 import com.github.adamzv.kafkamcp.domain.ProblemException;
@@ -17,4 +18,6 @@ public interface KafkaAdminPort {
   List<Map<String, Object>> listConsumerGroups(String prefix) throws ProblemException;
 
   TopicDescriptionResult describeTopic(String topicName) throws ProblemException;
+
+  ConsumerGroupDetail describeConsumerGroup(String groupId) throws ProblemException;
 }

@@ -163,8 +163,9 @@ Metrics are emitted per MCP tool (`kafka_mcp_*`) and include durations, counts, 
 | `listTopics(prefix?)`                                | Lists topics (internal ones included) and basic stats.                                                   |
 | `describeTopic({topic})`                             | Returns partition metadata with leader, replicas, and ISR IDs.                                           |
 | `produceMessage({topic,format,key?,headers?,value})` | Validates payload size/format and produces via Kafka.                                                    |
-| `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions and adds JSON parsing when possible. |
+| `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions. Messages from multiple partitions are merged and sorted by timestamp. Adds JSON parsing when possible. |
 | `listConsumerGroups(prefix?)`                        | Lists consumer groups, states, and members.                                                              |
+| `describeConsumerGroup({groupId})`                   | Shows detailed consumer group information including partition assignments, current offsets, end offsets, and lag calculation for each partition. |
 
 Each invocation is logged with `tool_call` structured logs and measured via Micrometer timers/counters (`kafka_mcp_*` metrics). Attach the Prometheus registry (already on the classpath) to scrape these metrics in production.
 

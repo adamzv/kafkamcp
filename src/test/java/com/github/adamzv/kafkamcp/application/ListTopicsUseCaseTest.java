@@ -43,6 +43,11 @@ class ListTopicsUseCaseTest {
       public TopicDescriptionResult describeTopic(String topicName) {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail describeConsumerGroup(String groupId) {
+        return null;
+      }
     };
 
     ListTopicsUseCase useCase = new ListTopicsUseCase(adminPort);
@@ -74,6 +79,11 @@ class ListTopicsUseCaseTest {
       @Override
       public TopicDescriptionResult describeTopic(String topicName) {
         throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail describeConsumerGroup(String groupId) {
+        return null;
       }
     };
 

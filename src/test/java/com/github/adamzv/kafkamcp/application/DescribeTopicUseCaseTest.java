@@ -43,6 +43,11 @@ class DescribeTopicUseCaseTest {
             List.of(new TopicPartitionDetail(0, 1, List.of(1, 2), List.of(1, 2)))
         );
       }
+
+      @Override
+      public com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail describeConsumerGroup(String groupId) {
+        return null;
+      }
     };
 
     DescribeTopicUseCase useCase = new DescribeTopicUseCase(port);
@@ -85,6 +90,11 @@ class DescribeTopicUseCaseTest {
     @Override
     public TopicDescriptionResult describeTopic(String topicName) {
       throw Problems.notFound("Topic not found", Map.of("topic", topicName));
+    }
+
+    @Override
+    public com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail describeConsumerGroup(String groupId) {
+      return null;
     }
   }
 }

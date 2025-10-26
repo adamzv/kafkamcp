@@ -1,5 +1,9 @@
 package com.github.adamzv.kafkamcp.adapters.kafka;
 
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupMember;
+import com.github.adamzv.kafkamcp.domain.PartitionAssignment;
+import com.github.adamzv.kafkamcp.domain.PartitionLagInfo;
 import com.github.adamzv.kafkamcp.domain.ProblemException;
 import com.github.adamzv.kafkamcp.domain.Problems;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
@@ -24,12 +28,18 @@ import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsSpec;
 import org.apache.kafka.clients.admin.ListConsumerGroupsOptions;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsOptions;
+import org.apache.kafka.clients.admin.MemberDescription;
+import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.springframework.stereotype.Component;
 
@@ -173,6 +183,95 @@ public class KafkaAdminAdapter implements KafkaAdminPort {
         value.name(),
         value.name().startsWith("__"),
         List.copyOf(partitions)
+    );
+  }
+
+  @Override
+  public ConsumerGroupDetail describeConsumerGroup(String groupId) {
+    if (groupId == null || groupId.isBlank()) {
+      throw Problems.invalidArgument("Group ID must be provided", Map.of("groupId", groupId));
+    }
+
+    // Describe the consumer group
+    DescribeConsumerGroupsResult describeResult = adminClient.describeConsumerGroups(List.of(groupId));
+    Map<String, ConsumerGroupDescription> descriptions = await(
+        describeResult.all(),
+        "describeConsumerGroup",
+        Map.of("groupId", groupId)
+    );
+
+    ConsumerGroupDescription description = descriptions.get(groupId);
+    if (description == null) {
+      throw Problems.notFound("Consumer group not found", Map.of("groupId", groupId));
+    }
+
+    // Get committed offsets for the consumer group
+    Map<TopicPartition, OffsetAndMetadata> committedOffsets = await(
+        adminClient.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata(),
+        "listConsumerGroupOffsets",
+        Map.of("groupId", groupId)
+    );
+
+    // Get end offsets for all partitions
+    Map<TopicPartition, Long> endOffsets = new HashMap<>();
+    if (!committedOffsets.isEmpty()) {
+      Map<TopicPartition, OffsetSpec> offsetSpecs = new HashMap<>();
+      for (TopicPartition tp : committedOffsets.keySet()) {
+        offsetSpecs.put(tp, OffsetSpec.latest());
+      }
+      ListOffsetsResult offsetsResult = adminClient.listOffsets(offsetSpecs);
+      Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> resultInfo = await(
+          offsetsResult.all(),
+          "listOffsets",
+          Map.of("groupId", groupId)
+      );
+      for (Map.Entry<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> entry : resultInfo.entrySet()) {
+        endOffsets.put(entry.getKey(), entry.getValue().offset());
+      }
+    }
+
+    // Build member details with partition assignments
+    List<ConsumerGroupMember> members = description.members().stream()
+        .map(member -> buildMemberDetail(member))
+        .toList();
+
+    // Calculate lag for all partitions
+    List<PartitionLagInfo> lagInfo = new ArrayList<>();
+    for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : committedOffsets.entrySet()) {
+      TopicPartition tp = entry.getKey();
+      Long currentOffset = entry.getValue() != null ? entry.getValue().offset() : null;
+      Long endOffset = endOffsets.get(tp);
+      Long lag = (currentOffset != null && endOffset != null) ? endOffset - currentOffset : null;
+
+      lagInfo.add(new PartitionLagInfo(
+          tp.topic(),
+          tp.partition(),
+          currentOffset,
+          endOffset,
+          lag
+      ));
+    }
+
+    return new ConsumerGroupDetail(
+        description.groupId(),
+        description.state().toString(),
+        List.copyOf(members),
+        List.copyOf(lagInfo)
+    );
+  }
+
+  private ConsumerGroupMember buildMemberDetail(MemberDescription member) {
+    List<PartitionAssignment> assignments = new ArrayList<>();
+    if (member.assignment() != null && member.assignment().topicPartitions() != null) {
+      for (TopicPartition tp : member.assignment().topicPartitions()) {
+        assignments.add(new PartitionAssignment(tp.topic(), tp.partition()));
+      }
+    }
+    return new ConsumerGroupMember(
+        member.consumerId(),
+        member.clientId(),
+        member.host(),
+        List.copyOf(assignments)
     );
   }
 
