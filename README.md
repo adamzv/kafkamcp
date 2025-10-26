@@ -2,109 +2,98 @@
 
 Spring Boot 3.3 / Java 21 MCP server that exposes Kafka read/produce tooling over the Spring AI MCP STDIO transport and an HTTP SSE endpoint. The app follows a hexagonal layout (`domain`, `ports`, `application`, `adapters`) and relies on Kafka clients plus Testcontainers for end-to-end verification.
 
+## Available MCP Tools
+
+| Tool                                                 | Description                                                                                              |
+|------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `listTopics(prefix?)`                                | Lists topics (internal ones included) and basic stats.                                                   |
+| `describeTopic({topic})`                             | Returns partition metadata with leader, replicas, and ISR IDs.                                           |
+| `produceMessage({topic,format,key?,headers?,value})` | Validates payload size/format and produces via Kafka.                                                    |
+| `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions. Messages from multiple partitions are merged and sorted by timestamp. Adds JSON parsing when possible. |
+| `listConsumerGroups(prefix?)`                        | Lists consumer groups, states, and members.                                                              |
+| `describeConsumerGroup({groupId})`                   | Shows detailed consumer group information including partition assignments, current offsets, end offsets, and lag calculation for each partition. |
+
+Each invocation is logged with `tool_call` structured logs and measured via Micrometer timers/counters (`kafka_mcp_*` metrics). Attach the Prometheus registry (already on the classpath) to scrape these metrics in production.
+
 ## Architecture
 
 The project follows hexagonal architecture (ports and adapters) to keep business logic independent from external concerns.
 
+```mermaid
+flowchart LR
+    subgraph Client["MCP Client"]
+        client[MCP IDE / Agent]
+    end
+
+    subgraph Inbound["Inbound Adapters"]
+        sse["WebMvcSseServerTransportProvider"]
+        tools["KafkaTools (@Tool methods)"]
+    end
+
+    subgraph Application["Application Layer – Use Cases"]
+        lt[ListTopics]
+        dt[DescribeTopic]
+        lc[ListConsumerGroups]
+        dc[DescribeConsumerGroup]
+        tt[TailTopic]
+        pm[ProduceMessage]
+    end
+
+    subgraph Ports["Ports"]
+        prodPort[KafkaProducerPort]
+        adminPort[KafkaAdminPort]
+        consPort[KafkaConsumerPort]
+    end
+
+    subgraph Outbound["Outbound Adapters"]
+        prodAdapter[KafkaProducerAdapter]
+        adminAdapter[KafkaAdminAdapter]
+        consAdapter[KafkaConsumerAdapter]
+    end
+
+    subgraph Kafka["Kafka Cluster"]
+        brokers[(Apache Kafka Brokers)]
+    end
+
+    subgraph Domain["Domain & Support"]
+        models["Records: TopicInfo, MessageEnvelope, TailRequest, ProduceRequest, Limits, Problems"]
+        config["ApplicationConfig / SseTransportConfig / KafkaProperties / LimitsProperties"]
+    end
+
+    client -->|"SSE"| sse --> tools
+
+    tools --> lt
+    tools --> dt
+    tools --> lc
+    tools --> dc
+    tools --> tt
+    tools --> pm
+
+    lt --> adminPort
+    dt --> adminPort
+    lc --> adminPort
+    dc --> adminPort
+    tt --> consPort
+    pm --> prodPort
+
+    adminPort --> adminAdapter --> brokers
+    consPort --> consAdapter --> brokers
+    prodPort --> prodAdapter --> brokers
+
+    models -.-> lt
+    models -.-> dt
+    models -.-> lc
+    models -.-> dc
+    models -.-> tt
+    models -.-> pm
+
+    config -.-> sse
+    config -.-> tools
+    config -.-> prodAdapter
+    config -.-> adminAdapter
+    config -.-> consAdapter
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          MCP CLIENT LAYER                                   │
-│                     ┌─────────────────────────┐                             │
-│                     │   MCP Client            │                             │
-│                     │   (Claude Code)         │                             │
-│                     └───────────┬─────────────┘                             │
-└─────────────────────────────────┼───────────────────────────────────────────┘
-                                  │ HTTP SSE
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       ADAPTERS - INBOUND                                    │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  SSE Transport (WebMvcSseServerTransportProvider)                    │  │
-│  └────────────────────────────────┬─────────────────────────────────────┘  │
-│                                   │                                         │
-│  ┌────────────────────────────────▼─────────────────────────────────────┐  │
-│  │  KafkaTools (@Tool Methods)                                          │  │
-│  │  - listTopics()      - tailTopic()                                   │  │
-│  │  - describeTopic()   - produceMessage()                              │  │
-│  │  - listConsumerGroups()                                              │  │
-│  └──┬────────────┬────────────┬────────────┬────────────┬───────────────┘  │
-└─────┼────────────┼────────────┼────────────┼────────────┼──────────────────┘
-      │            │            │            │            │
-      │            │            │            │            │
-┌─────▼────────────▼────────────▼────────────▼────────────▼──────────────────┐
-│                     APPLICATION LAYER - USE CASES                           │
-│                                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │ ListTopics   │  │ DescribeTopic│  │ ListConsumer │  │ TailTopic     │  │
-│  │ UseCase      │  │ UseCase      │  │ GroupsUseCase│  │ UseCase       │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬────────┘  │
-│         │                 │                  │                  │           │
-│         │                 │                  │                  │           │
-│  ┌──────────────┐         │                  │                  │           │
-│  │ ProduceMsg   │         │                  │                  │           │
-│  │ UseCase      │         │                  │                  │           │
-│  └──────┬───────┘         │                  │                  │           │
-└─────────┼─────────────────┼──────────────────┼──────────────────┼───────────┘
-          │                 │                  │                  │
-          │      ┌──────────┴──────────────────┘                  │
-          │      │                                                │
-          │      │                                  ┌─────────────┘
-          │      │                                  │
-┌─────────▼──────▼──────────────────────────────────▼─────────────────────────┐
-│                        PORTS - INTERFACES                                   │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐         │
-│  │ KafkaProducerPort│  │ KafkaAdminPort   │  │ KafkaConsumerPort│         │
-│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘         │
-└───────────┼────────────────────────┼──────────────────────┼─────────────────┘
-            │                        │                      │
-            │ implements             │ implements           │ implements
-            │                        │                      │
-┌───────────▼────────────────────────▼──────────────────────▼─────────────────┐
-│                      ADAPTERS - OUTBOUND                                    │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐         │
-│  │ KafkaProducer    │  │ KafkaAdmin       │  │ KafkaConsumer    │         │
-│  │ Adapter          │  │ Adapter          │  │ Adapter          │         │
-│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘         │
-└───────────┼────────────────────────┼──────────────────────┼─────────────────┘
-            │                        │                      │
-            │ KafkaProducer          │ AdminClient          │ KafkaConsumer
-            │                        │                      │
-            └────────────────────────┼──────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         EXTERNAL SYSTEMS                                    │
-│                     ┌─────────────────────────┐                             │
-│                     │   Apache Kafka Cluster  │                             │
-│                     └─────────────────────────┘                             │
-└─────────────────────────────────────────────────────────────────────────────┘
 
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DOMAIN LAYER                                      │
-│                                                                             │
-│  Domain Models (Records):                                                  │
-│  • TopicInfo          • MessageEnvelope    • ProduceRequest                │
-│  • TailRequest        • ProduceResult      • TopicDescriptionResult        │
-│  • Limits             • Problem            • ProblemException              │
-│                                                                             │
-│  Used by all Use Cases for data contracts and business rules               │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CONFIGURATION & SUPPORT                                  │
-│                                                                             │
-│  • ApplicationConfig      - Wires Kafka clients and MCP tools              │
-│  • SseTransportConfig     - Configures SSE transport provider              │
-│  • KafkaProperties        - Kafka bootstrap servers configuration          │
-│  • LimitsProperties       - Message/byte limits configuration              │
-│  • StartupLogger          - Logs server readiness                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
 ### Layer Responsibilities
 
@@ -156,26 +145,12 @@ http://localhost:${SERVER_PORT:-8080}/actuator/prometheus
 
 Metrics are emitted per MCP tool (`kafka_mcp_*`) and include durations, counts, bytes, and error tallies.
 
-## Available MCP Tools
-
-| Tool                                                 | Description                                                                                              |
-|------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `listTopics(prefix?)`                                | Lists topics (internal ones included) and basic stats.                                                   |
-| `describeTopic({topic})`                             | Returns partition metadata with leader, replicas, and ISR IDs.                                           |
-| `produceMessage({topic,format,key?,headers?,value})` | Validates payload size/format and produces via Kafka.                                                    |
-| `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions. Messages from multiple partitions are merged and sorted by timestamp. Adds JSON parsing when possible. |
-| `listConsumerGroups(prefix?)`                        | Lists consumer groups, states, and members.                                                              |
-| `describeConsumerGroup({groupId})`                   | Shows detailed consumer group information including partition assignments, current offsets, end offsets, and lag calculation for each partition. |
-
-Each invocation is logged with `tool_call` structured logs and measured via Micrometer timers/counters (`kafka_mcp_*` metrics). Attach the Prometheus registry (already on the classpath) to scrape these metrics in production.
-
 ## Testing
 
 - **Unit tests only:** `./mvnw test -DskipITs=true`
-- **Full verification (includes Testcontainers Kafka):** `./mvnw clean verify`
-- **Formatting:** `./mvnw spotless:apply` (if you add Spotless later; for now follow the repo style guide)
+- **Full verification (includes Testcontainers Kafka):** `./mvnw clean verify` (runs unit tests via Surefire and `@Tag("integration")` tests via Failsafe)
 
-The integration suite spins up Kafka in Docker and covers produce/tail/describe happy paths. Make sure Docker is running before executing the full verify command.
+The integration suite spins up Kafka in Docker and covers produce/tail/describe happy paths. Make sure Docker is running before executing the full verify command; Failsafe will automatically pick up the tagged tests during the `verify` phase.
 
 ## Development Notes
 - Keep the hexagonal boundaries intact: business rules live in `application` and `domain`, while adapters wrap Kafka and MCP transport concerns.
