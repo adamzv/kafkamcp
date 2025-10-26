@@ -135,6 +135,18 @@ All settings live in `src/main/resources/application.yaml`. Override the importa
 
 On startup you’ll see a `mcp_server_ready` log line with the effective limits, bootstrap servers, and MCP metadata.
 
+### Build & Run via Docker
+An optimized multi-stage `Dockerfile` is available at the repo root. Build and run it like so:
+
+```bash
+docker build -t kafka-mcp .
+docker run --rm -p 8080:8080 \
+  -e KAFKA_BOOTSTRAP_SERVERS=host.docker.internal:29092 \
+  kafka-mcp
+```
+
+Add `-e MCP_BASE_URL` or other environment overrides as needed. The container exposes port `8080` by default and runs as an unprivileged user.
+
 ### Metrics
 
 The Prometheus registry is on the classpath and exposed through Spring Boot Actuator. Once the app is running you can scrape:
