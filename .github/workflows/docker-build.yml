@@ -67,7 +67,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,enable={{is_default_branch}}
+            type=sha,enable=${{ github.event_name == 'pull_request' }},prefix=pr-${{ github.event.pull_request.number }}-
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push JVM image
@@ -114,7 +115,8 @@ jobs:
             type=semver,pattern={{version}},suffix=-native
             type=semver,pattern={{major}}.{{minor}},suffix=-native
             type=semver,pattern={{major}},suffix=-native
-            type=sha,prefix={{branch}}-,suffix=-native
+            type=sha,enable={{is_default_branch}},suffix=-native
+            type=sha,enable=${{ github.event_name == 'pull_request' }},prefix=pr-${{ github.event.pull_request.number }}-,suffix=-native
             type=raw,value=native,enable={{is_default_branch}}
 
       - name: Build and push Native image
