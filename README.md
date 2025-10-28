@@ -10,6 +10,7 @@ Spring Boot 3.3 / Java 21 MCP server that exposes Kafka read/produce tooling ove
 | `describeTopic({topic})`                             | Returns partition metadata with leader, replicas, and ISR IDs.                                           |
 | `produceMessage({topic,format,key?,headers?,value})` | Validates payload size/format and produces via Kafka.                                                    |
 | `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions. Messages from multiple partitions are merged and sorted by timestamp. Adds JSON parsing when possible. |
+| `searchMessages({topic,searchTerm,searchIn,from?,limit?,maxScan?,caseSensitive?,startTimestamp?,endTimestamp?})` | Searches for messages containing a keyword in key, value, or headers. Scans all partitions with configurable limits. Returns matching messages with metadata about scan progress. |
 | `listConsumerGroups(prefix?)`                        | Lists consumer groups, states, and members.                                                              |
 | `describeConsumerGroup({groupId})`                   | Shows detailed consumer group information including partition assignments, current offsets, end offsets, and lag calculation for each partition. |
 
@@ -40,6 +41,59 @@ Returns: `orders-dlt`, `payments-dlt`, `notifications-dlt`, etc.
 ```
 
 > **Note:** You cannot use both `prefix` and `suffix` at the same time. The server will return an error if both are provided.
+
+**Search for error messages in message values:**
+```json
+{
+  "topic": "orders-topic",
+  "searchTerm": "error",
+  "searchIn": ["VALUE"],
+  "limit": 50,
+  "maxScan": 10000
+}
+```
+Returns messages containing "error" in their value, scanning up to 10,000 messages or until 50 matches are found.
+
+**Search for a specific order ID in message keys:**
+```json
+{
+  "topic": "orders-topic",
+  "searchTerm": "ORDER-12345",
+  "searchIn": ["KEY"],
+  "caseSensitive": true
+}
+```
+Case-sensitive search for messages with keys containing "ORDER-12345".
+
+**Search for trace IDs in headers:**
+```json
+{
+  "topic": "events-topic",
+  "searchTerm": "trace-id-abc",
+  "searchIn": ["HEADERS"]
+}
+```
+Searches both header names and values for the term.
+
+**Search in multiple locations (key and value):**
+```json
+{
+  "topic": "orders-topic",
+  "searchTerm": "customer-xyz",
+  "searchIn": ["KEY", "VALUE", "HEADERS"],
+  "from": "earliest",
+  "startTimestamp": 1698765432000,
+  "endTimestamp": 1698851832000
+}
+```
+Searches across keys, values, and headers within a specific time range.
+
+**Search result includes metadata:**
+- `messages`: Array of matching messages
+- `messagesScanned`: Total messages scanned
+- `limitReached`: Whether result limit was hit
+- `maxScanReached`: Whether scan limit was hit
+- `searchDurationMs`: Time taken to search
 
 ## Architecture
 
@@ -146,6 +200,8 @@ All settings live in `src/main/resources/application.yaml`. Override the importa
 | `limits.messagesPerCall` | `LIMIT_MESSAGES_PER_CALL` | `200`            |
 | `limits.bytesPerCall`    | `LIMIT_BYTES_PER_CALL`    | `1048576`        |
 | `limits.messageBytes`    | `LIMIT_MESSAGE_BYTES`     | `262144`         |
+| `limits.searchMaxResults` | `SEARCH_MAX_RESULTS`     | `100`            |
+| `limits.searchMaxScan`   | `SEARCH_MAX_SCAN`         | `10000`          |
 | `server.port`            | `SERVER_PORT`             | `8080`           |
 | `spring.ai.mcp.server.stdio` | n/a | `false` (enables SSE) |
 | `spring.ai.mcp.server.base-url` | `MCP_BASE_URL` | `http://localhost:8080` |

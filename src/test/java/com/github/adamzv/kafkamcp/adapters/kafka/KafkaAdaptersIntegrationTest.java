@@ -51,7 +51,7 @@ class KafkaAdaptersIntegrationTest {
 
   @BeforeAll
   static void setUp() {
-    LimitsProperties limitsProperties = new LimitsProperties(200, 1_000_000, 262_144);
+    LimitsProperties limitsProperties = new LimitsProperties(200, 1_000_000, 262_144, 100, 10000);
     ApplicationConfig config = new ApplicationConfig(limitsProperties);
     KafkaProperties kafkaProperties = new KafkaProperties(KAFKA.getBootstrapServers());
 

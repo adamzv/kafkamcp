@@ -6,6 +6,7 @@ import com.github.adamzv.kafkamcp.application.DescribeTopicUseCase;
 import com.github.adamzv.kafkamcp.application.ListConsumerGroupsUseCase;
 import com.github.adamzv.kafkamcp.application.ListTopicsUseCase;
 import com.github.adamzv.kafkamcp.application.ProduceMessageUseCase;
+import com.github.adamzv.kafkamcp.application.SearchMessagesUseCase;
 import com.github.adamzv.kafkamcp.application.TailTopicUseCase;
 import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
 import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
@@ -14,6 +15,8 @@ import com.github.adamzv.kafkamcp.domain.ProblemException;
 import com.github.adamzv.kafkamcp.domain.ProduceRequest;
 import com.github.adamzv.kafkamcp.domain.ProduceResult;
 import com.github.adamzv.kafkamcp.domain.Problems;
+import com.github.adamzv.kafkamcp.domain.SearchRequest;
+import com.github.adamzv.kafkamcp.domain.SearchResult;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
 import com.github.adamzv.kafkamcp.domain.TopicInfo;
@@ -42,6 +45,7 @@ public class KafkaTools {
   private final DescribeTopicUseCase describeTopicUseCase;
   private final ProduceMessageUseCase produceMessageUseCase;
   private final TailTopicUseCase tailTopicUseCase;
+  private final SearchMessagesUseCase searchMessagesUseCase;
   private final ListConsumerGroupsUseCase listConsumerGroupsUseCase;
   private final DescribeConsumerGroupUseCase describeConsumerGroupUseCase;
   private final ObjectMapper objectMapper;
@@ -52,6 +56,7 @@ public class KafkaTools {
       DescribeTopicUseCase describeTopicUseCase,
       ProduceMessageUseCase produceMessageUseCase,
       TailTopicUseCase tailTopicUseCase,
+      SearchMessagesUseCase searchMessagesUseCase,
       ListConsumerGroupsUseCase listConsumerGroupsUseCase,
       DescribeConsumerGroupUseCase describeConsumerGroupUseCase,
       ObjectMapper objectMapper,
@@ -60,6 +65,7 @@ public class KafkaTools {
     this.describeTopicUseCase = describeTopicUseCase;
     this.produceMessageUseCase = produceMessageUseCase;
     this.tailTopicUseCase = tailTopicUseCase;
+    this.searchMessagesUseCase = searchMessagesUseCase;
     this.listConsumerGroupsUseCase = listConsumerGroupsUseCase;
     this.describeConsumerGroupUseCase = describeConsumerGroupUseCase;
     this.objectMapper = objectMapper;
@@ -190,6 +196,36 @@ public class KafkaTools {
             )
         ),
         contextOf("groupId", input.groupId())
+    );
+  }
+
+  @Tool(name = "searchMessages", description = "Search for messages in a Kafka topic by keyword in key, value, or headers")
+  public SearchResult searchMessages(SearchRequest request) {
+    if (request == null) {
+      throw Problems.invalidArgument("Search request is required", Map.of());
+    }
+    return invoke(
+        "searchMessages",
+        () -> searchMessagesUseCase.execute(request),
+        result -> new ToolTelemetry(
+            result.messages().size(),
+            estimateMessageBytes(result.messages()),
+            contextOf(
+                "topic", request.topic(),
+                "messagesScanned", result.messagesScanned(),
+                "resultsFound", result.messages().size(),
+                "limitReached", result.limitReached(),
+                "maxScanReached", result.maxScanReached(),
+                "durationMs", result.searchDurationMs()
+            )
+        ),
+        contextOf(
+            "topic", request.topic(),
+            "searchTerm", request.searchTerm(),
+            "searchIn", request.searchIn(),
+            "limit", request.limit(),
+            "maxScan", request.maxScan()
+        )
     );
   }
 

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class ProduceMessageUseCaseTest {
 
-  private static final Limits LIMITS = new Limits(200, 1_000_000, 256);
+  private static final Limits LIMITS = new Limits(200, 1_000_000, 256, 100, 10000);
 
   private final AtomicReference<ProduceRequest> captured = new AtomicReference<>();
   private ProduceMessageUseCase useCase;

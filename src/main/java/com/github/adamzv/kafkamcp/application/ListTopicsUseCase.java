@@ -19,20 +19,24 @@ public class ListTopicsUseCase {
   }
 
   public List<TopicInfo> execute(String prefix, String suffix) {
-    if (prefix != null && suffix != null) {
+    // Normalize empty strings to null
+    final String normalizedPrefix = (prefix == null || prefix.isBlank()) ? null : prefix;
+    final String normalizedSuffix = (suffix == null || suffix.isBlank()) ? null : suffix;
+
+    if (normalizedPrefix != null && normalizedSuffix != null) {
       throw Problems.invalidArgument(
           "Cannot filter by both prefix and suffix",
-          Map.of("prefix", prefix, "suffix", suffix)
+          Map.of("prefix", normalizedPrefix, "suffix", normalizedSuffix)
       );
     }
 
     Set<String> topicNames = adminPort.listTopicNames();
     List<String> filtered = topicNames.stream()
         .filter(name -> {
-          if (prefix != null) {
-            return name.startsWith(prefix);
-          } else if (suffix != null) {
-            return name.endsWith(suffix);
+          if (normalizedPrefix != null) {
+            return name.startsWith(normalizedPrefix);
+          } else if (normalizedSuffix != null) {
+            return name.endsWith(normalizedSuffix);
           }
           return true;
         })

@@ -20,24 +20,34 @@ import org.junit.jupiter.api.Test;
 
 class TailTopicUseCaseTest {
 
-  private static final Limits LIMITS = new Limits(200, 1_000_000, 256);
+  private static final Limits LIMITS = new Limits(200, 1_000_000, 256, 100, 10000);
 
   private final AtomicReference<TailRequest> captured = new AtomicReference<>();
   private TailTopicUseCase useCase;
 
   @BeforeEach
   void setUp() {
-    KafkaConsumerPort consumerPort = (request, limits) -> {
-      captured.set(request);
-      return List.of(new MessageEnvelope(
-          "key",
-          Map.of(),
-          "{\"message\":\"hello\"}",
-          null,
-          123L,
-          0,
-          10L
-      ));
+    KafkaConsumerPort consumerPort = new KafkaConsumerPort() {
+      @Override
+      public List<MessageEnvelope> tail(TailRequest request, Limits limits) {
+        captured.set(request);
+        return List.of(new MessageEnvelope(
+            "key",
+            Map.of(),
+            "{\"message\":\"hello\"}",
+            null,
+            123L,
+            0,
+            10L
+        ));
+      }
+
+      @Override
+      public com.github.adamzv.kafkamcp.domain.SearchResult search(
+          com.github.adamzv.kafkamcp.domain.SearchRequest request,
+          Limits limits) {
+        return new com.github.adamzv.kafkamcp.domain.SearchResult(List.of(), 0, false, false, 0L);
+      }
     };
     useCase = new TailTopicUseCase(consumerPort, new ObjectMapper(), LIMITS);
   }

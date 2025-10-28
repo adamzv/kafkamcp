@@ -14,11 +14,15 @@ public record LimitsProperties(
     @Positive(message = "limits.bytesPerCall must be > 0")
     int bytesPerCall,
     @Positive(message = "limits.messageBytes must be > 0")
-    int messageBytes
+    int messageBytes,
+    @Positive(message = "limits.searchMaxResults must be > 0")
+    int searchMaxResults,
+    @Positive(message = "limits.searchMaxScan must be > 0")
+    int searchMaxScan
 ) {
 
   public Limits toDomain() {
-    return new Limits(messagesPerCall, bytesPerCall, messageBytes);
+    return new Limits(messagesPerCall, bytesPerCall, messageBytes, searchMaxResults, searchMaxScan);
   }
 
   @AssertTrue(message = "limits.messageBytes must be <= limits.bytesPerCall")
