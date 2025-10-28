@@ -6,7 +6,7 @@ Spring Boot 3.3 / Java 21 MCP server that exposes Kafka read/produce tooling ove
 
 | Tool                                                 | Description                                                                                              |
 |------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `listTopics(prefix?)`                                | Lists topics (internal ones included) and basic stats.                                                   |
+| `listTopics(prefix?, suffix?)`                       | Lists topics (internal ones included) and basic stats. Can filter by prefix OR suffix (not both). Use suffix filtering to find DLT topics (e.g., `suffix="-dlt"`). |
 | `describeTopic({topic})`                             | Returns partition metadata with leader, replicas, and ISR IDs.                                           |
 | `produceMessage({topic,format,key?,headers?,value})` | Validates payload size/format and produces via Kafka.                                                    |
 | `tailTopic({topic,from,limit?,partition?})`          | Tails messages from `earliest`, `latest`, `end-N`, `offset:X`, or `timestamp:T` positions. Messages from multiple partitions are merged and sorted by timestamp. Adds JSON parsing when possible. |
@@ -14,6 +14,32 @@ Spring Boot 3.3 / Java 21 MCP server that exposes Kafka read/produce tooling ove
 | `describeConsumerGroup({groupId})`                   | Shows detailed consumer group information including partition assignments, current offsets, end offsets, and lag calculation for each partition. |
 
 Each invocation is logged with `tool_call` structured logs and measured via Micrometer timers/counters (`kafka_mcp_*` metrics). Attach the Prometheus registry (already on the classpath) to scrape these metrics in production.
+
+### Usage Examples
+
+**List all topics:**
+```json
+{"prefix": null, "suffix": null}
+```
+
+**Find topics by prefix:**
+```json
+{"prefix": "orders-", "suffix": null}
+```
+Returns: `orders-v1`, `orders-v2`, `orders-retry`, etc.
+
+**Find DLT (Dead Letter Topic) topics by suffix:**
+```json
+{"prefix": null, "suffix": "-dlt"}
+```
+Returns: `orders-dlt`, `payments-dlt`, `notifications-dlt`, etc.
+
+**Find retry topics:**
+```json
+{"prefix": null, "suffix": "-retry"}
+```
+
+> **Note:** You cannot use both `prefix` and `suffix` at the same time. The server will return an error if both are provided.
 
 ## Architecture
 

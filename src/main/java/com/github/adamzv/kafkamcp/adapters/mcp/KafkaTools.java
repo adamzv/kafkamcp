@@ -66,18 +66,19 @@ public class KafkaTools {
     this.meterRegistry = meterRegistry;
   }
 
-  @Tool(name = "listTopics", description = "List Kafka topics, optionally filtered by prefix")
+  @Tool(name = "listTopics", description = "List Kafka topics, optionally filtered by prefix OR suffix (not both)")
   public List<TopicInfo> listTopics(ListTopicsInput input) {
     String prefix = input != null ? input.prefix() : null;
+    String suffix = input != null ? input.suffix() : null;
     return invoke(
         "listTopics",
-        () -> listTopicsUseCase.execute(prefix),
+        () -> listTopicsUseCase.execute(prefix, suffix),
         topics -> new ToolTelemetry(
             topics.size(),
             estimateTopicNameBytes(topics),
             contextOf("topicCount", topics.size())
         ),
-        contextOf("prefix", prefix)
+        contextOf("prefix", prefix, "suffix", suffix)
     );
   }
 
@@ -277,7 +278,7 @@ public class KafkaTools {
     return value == null ? 0L : value.getBytes(StandardCharsets.UTF_8).length;
   }
 
-  public record ListTopicsInput(String prefix) {}
+  public record ListTopicsInput(String prefix, String suffix) {}
 
   public record DescribeTopicInput(String topic) {}
 
