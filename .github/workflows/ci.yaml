@@ -9,8 +9,6 @@ on:
 jobs:
   maven:
     runs-on: ubuntu-latest
-    env:
-      MAVEN_OPTS: -Dmaven.repo.local=${{ runner.temp }}/.m2/repository
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
