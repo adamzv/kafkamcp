@@ -67,6 +67,7 @@ public class TailTopicUseCase {
       return value;
     }
     if (END_PATTERN.matcher(value).matches()) {
+      ensureNonNegativeLong(value.substring(4), value);
       return value;
     }
     if (matchesNonNegative(OFFSET_PATTERN, value) || matchesNonNegative(TIMESTAMP_PATTERN, value)) {
@@ -84,11 +85,19 @@ public class TailTopicUseCase {
     if (!matcher.matches()) {
       return false;
     }
-    long parsed = Long.parseLong(matcher.group(1));
-    if (parsed < 0) {
-      throw Problems.invalidArgument("Position must be non-negative", Map.of("from", value));
-    }
+    ensureNonNegativeLong(matcher.group(1), value);
     return true;
+  }
+
+  private void ensureNonNegativeLong(String numericValue, String original) {
+    try {
+      long parsed = Long.parseLong(numericValue);
+      if (parsed < 0) {
+        throw Problems.invalidArgument("Position must be non-negative", Map.of("from", original));
+      }
+    } catch (NumberFormatException ex) {
+      throw Problems.invalidArgument("Position value is too large", Map.of("from", original));
+    }
   }
 
   private int normalizeLimit(Integer limit) {

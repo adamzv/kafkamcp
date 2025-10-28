@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -74,11 +75,10 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
     } catch (KafkaException ex) {
       throw Problems.kafkaUnavailable(
           "Kafka consume failed",
-          Map.of(
-              "topic", request.topic(),
-              "bootstrapServers", kafkaProperties.bootstrapServers(),
-              "error", ex.getClass().getSimpleName(),
-              "message", ex.getMessage()
+          mergeContext(
+              Map.of("topic", request.topic()),
+              ex.getClass().getSimpleName(),
+              ex.getMessage()
           )
       );
     }
@@ -203,7 +203,7 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
           bytesUsed += estimatedBytes;
         }
 
-        Map<String, String> headers = new HashMap<>();
+        Map<String, String> headers = new LinkedHashMap<>();
         for (Header header : record.headers()) {
           byte[] valueBytes = header.value();
           headers.put(header.key(), valueBytes == null ? null : new String(valueBytes, StandardCharsets.UTF_8));
@@ -211,7 +211,7 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
 
         messages.add(new MessageEnvelope(
             record.key(),
-            Map.copyOf(headers),
+            java.util.Collections.unmodifiableMap(new LinkedHashMap<>(headers)),
             value,
             null,
             record.timestamp(),
@@ -284,7 +284,9 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
     Map<String, Object> merged = new HashMap<>(base);
     merged.put("bootstrapServers", kafkaProperties.bootstrapServers());
     merged.put("error", error);
-    merged.put("message", message);
-    return Map.copyOf(merged);
+    if (message != null) {
+      merged.put("message", message);
+    }
+    return java.util.Collections.unmodifiableMap(merged);
   }
 }

@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1.7
+
+###### Builder stage: GraalVM + Maven ##########################################
+FROM ghcr.io/graalvm/native-image-community:21 AS build
+WORKDIR /workspace
+
+# Install basic tools
+RUN microdnf install -y findutils && microdnf clean all
+
+# Pre-copy Maven wrapper & dependencies for caching
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && ./mvnw -B -ntp dependency:go-offline
+
+# Copy remaining sources, build native image
+COPY src src
+# Clean package to ensure target/classes exist
+RUN ./mvnw -B -ntp -Pnative native:compile -DskipTests
+
+###### Runtime stage: slim Debian with required libs ###########################
+FROM debian:bookworm-slim AS runtime
+ENV APP_HOME=/app \
+    SPRING_PROFILES_ACTIVE=default
+WORKDIR ${APP_HOME}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy native binary
+COPY --from=build --chmod=755 /workspace/target/kafka-mcp /app/kafka-mcp
+
+# Non-root execution
+RUN useradd --system --create-home --home-dir ${APP_HOME} appuser \
+    && chown appuser:appuser /app/kafka-mcp
+
+USER appuser
+EXPOSE 8080
+ENTRYPOINT ["/app/kafka-mcp"]

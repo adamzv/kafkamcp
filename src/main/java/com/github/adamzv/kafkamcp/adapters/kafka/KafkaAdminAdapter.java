@@ -309,15 +309,19 @@ public class KafkaAdminAdapter implements KafkaAdminPort {
     Map<String, Object> merged = new HashMap<>(context);
     merged.put("bootstrapServers", kafkaProperties.bootstrapServers());
     merged.put("error", cause.getClass().getSimpleName());
-    merged.put("message", cause.getMessage());
-    return Map.copyOf(merged);
+    if (cause.getMessage() != null) {
+      merged.put("message", cause.getMessage());
+    }
+    return java.util.Collections.unmodifiableMap(merged);
   }
 
   private Map<String, Object> mergedContext(Map<String, Object> context, TimeoutException ex) {
     Map<String, Object> merged = new HashMap<>(context);
     merged.put("bootstrapServers", kafkaProperties.bootstrapServers());
     merged.put("error", "TimeoutException");
-    merged.put("message", ex.getMessage());
-    return Map.copyOf(merged);
+    if (ex.getMessage() != null) {
+      merged.put("message", ex.getMessage());
+    }
+    return java.util.Collections.unmodifiableMap(merged);
   }
 }

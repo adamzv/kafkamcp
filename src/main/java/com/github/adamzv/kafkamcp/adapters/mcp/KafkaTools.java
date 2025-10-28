@@ -13,6 +13,7 @@ import com.github.adamzv.kafkamcp.domain.Problem;
 import com.github.adamzv.kafkamcp.domain.ProblemException;
 import com.github.adamzv.kafkamcp.domain.ProduceRequest;
 import com.github.adamzv.kafkamcp.domain.ProduceResult;
+import com.github.adamzv.kafkamcp.domain.Problems;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
 import com.github.adamzv.kafkamcp.domain.TopicInfo;
@@ -82,6 +83,9 @@ public class KafkaTools {
 
   @Tool(name = "describeTopic", description = "Describe a Kafka topic including partition metadata")
   public TopicDescriptionResult describeTopic(DescribeTopicInput input) {
+    if (input == null) {
+      throw Problems.invalidArgument("DescribeTopicInput is required", Map.of());
+    }
     return invoke(
         "describeTopic",
         () -> describeTopicUseCase.execute(input.topic()),
@@ -100,6 +104,9 @@ public class KafkaTools {
 
   @Tool(name = "produceMessage", description = "Produce a message to a Kafka topic")
   public ProduceResult produceMessage(ProduceRequest request) {
+    if (request == null) {
+      throw Problems.invalidArgument("Produce request is required", Map.of());
+    }
     long payloadBytes = estimatePayloadBytes(request.value());
     return invoke(
         "produceMessage",
@@ -124,6 +131,9 @@ public class KafkaTools {
 
   @Tool(name = "tailTopic", description = "Tail recent messages from a Kafka topic")
   public List<MessageEnvelope> tailTopic(TailRequest request) {
+    if (request == null) {
+      throw Problems.invalidArgument("Tail request is required", Map.of());
+    }
     return invoke(
         "tailTopic",
         () -> tailTopicUseCase.execute(request),
@@ -162,6 +172,9 @@ public class KafkaTools {
 
   @Tool(name = "describeConsumerGroup", description = "Describe a consumer group with partition assignments and lag details")
   public ConsumerGroupDetail describeConsumerGroup(DescribeConsumerGroupInput input) {
+    if (input == null) {
+      throw Problems.invalidArgument("DescribeConsumerGroupInput is required", Map.of());
+    }
     return invoke(
         "describeConsumerGroup",
         () -> describeConsumerGroupUseCase.execute(input.groupId()),

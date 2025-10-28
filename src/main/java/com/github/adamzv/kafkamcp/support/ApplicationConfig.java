@@ -1,7 +1,19 @@
 package com.github.adamzv.kafkamcp.support;
 
 import com.github.adamzv.kafkamcp.adapters.mcp.KafkaTools;
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupDetail;
+import com.github.adamzv.kafkamcp.domain.ConsumerGroupMember;
 import com.github.adamzv.kafkamcp.domain.Limits;
+import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
+import com.github.adamzv.kafkamcp.domain.PartitionAssignment;
+import com.github.adamzv.kafkamcp.domain.PartitionLagInfo;
+import com.github.adamzv.kafkamcp.domain.Problem;
+import com.github.adamzv.kafkamcp.domain.ProduceRequest;
+import com.github.adamzv.kafkamcp.domain.ProduceResult;
+import com.github.adamzv.kafkamcp.domain.TailRequest;
+import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
+import com.github.adamzv.kafkamcp.domain.TopicInfo;
+import com.github.adamzv.kafkamcp.domain.TopicPartitionDetail;
 import java.time.Duration;
 import java.util.Properties;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -12,12 +24,33 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties({KafkaProperties.class, LimitsProperties.class})
+@RegisterReflectionForBinding({
+    KafkaProperties.class,
+    LimitsProperties.class,
+    KafkaTools.ListTopicsInput.class,
+    KafkaTools.DescribeTopicInput.class,
+    KafkaTools.ListConsumerGroupsInput.class,
+    KafkaTools.DescribeConsumerGroupInput.class,
+    TopicInfo.class,
+    TopicDescriptionResult.class,
+    TopicPartitionDetail.class,
+    ProduceRequest.class,
+    ProduceResult.class,
+    TailRequest.class,
+    MessageEnvelope.class,
+    ConsumerGroupDetail.class,
+    ConsumerGroupMember.class,
+    PartitionAssignment.class,
+    PartitionLagInfo.class,
+    Problem.class
+})
 public class ApplicationConfig {
 
   private static final Duration CLIENT_TIMEOUT = Duration.ofSeconds(5);

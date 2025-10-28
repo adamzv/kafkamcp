@@ -8,6 +8,8 @@ import com.github.adamzv.kafkamcp.ports.KafkaProducerPort;
 import com.github.adamzv.kafkamcp.support.KafkaProperties;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -79,21 +81,27 @@ public class KafkaProducerAdapter implements KafkaProducerPort {
     if (cause instanceof KafkaException) {
       return Problems.kafkaUnavailable(
           "Kafka produce failed",
-          Map.of(
-              "topic", request.topic(),
-              "bootstrapServers", kafkaProperties.bootstrapServers(),
-              "error", cause.getClass().getSimpleName(),
-              "message", cause.getMessage()
-          )
+          buildErrorDetails(request.topic(), cause, true)
       );
     }
     return Problems.operationFailed(
         "Unexpected error during produce",
-        Map.of(
-            "topic", request.topic(),
-            "error", cause.getClass().getSimpleName(),
-            "message", cause.getMessage()
-        )
+        buildErrorDetails(request.topic(), cause, false)
     );
+  }
+
+  private Map<String, Object> buildErrorDetails(String topic, Throwable cause, boolean includeBootstrap) {
+    Map<String, Object> details = new HashMap<>();
+    details.put("topic", topic);
+    if (includeBootstrap) {
+      details.put("bootstrapServers", kafkaProperties.bootstrapServers());
+    }
+    if (cause != null) {
+      details.put("error", cause.getClass().getSimpleName());
+      if (cause.getMessage() != null) {
+        details.put("message", cause.getMessage());
+      }
+    }
+    return Collections.unmodifiableMap(details);
   }
 }
