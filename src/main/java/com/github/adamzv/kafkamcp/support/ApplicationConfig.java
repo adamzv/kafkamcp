@@ -10,6 +10,9 @@ import com.github.adamzv.kafkamcp.domain.PartitionLagInfo;
 import com.github.adamzv.kafkamcp.domain.Problem;
 import com.github.adamzv.kafkamcp.domain.ProduceRequest;
 import com.github.adamzv.kafkamcp.domain.ProduceResult;
+import com.github.adamzv.kafkamcp.domain.SearchRequest;
+import com.github.adamzv.kafkamcp.domain.SearchResult;
+import com.github.adamzv.kafkamcp.domain.SearchTarget;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
 import com.github.adamzv.kafkamcp.domain.TopicInfo;
@@ -44,6 +47,9 @@ import org.springframework.context.annotation.Configuration;
     ProduceRequest.class,
     ProduceResult.class,
     TailRequest.class,
+    SearchRequest.class,
+    SearchResult.class,
+    SearchTarget.class,
     MessageEnvelope.class,
     ConsumerGroupDetail.class,
     ConsumerGroupMember.class,

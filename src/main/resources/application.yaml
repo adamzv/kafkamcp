@@ -25,6 +25,8 @@ limits:
   messagesPerCall: ${LIMIT_MESSAGES_PER_CALL:200} # 200 messages per call
   bytesPerCall: ${LIMIT_BYTES_PER_CALL:1048576}   # 1 MiB
   messageBytes: ${LIMIT_MESSAGE_BYTES:262144}     # 256 KiB
+  searchMaxResults: ${SEARCH_MAX_RESULTS:100}     # Max search results to return
+  searchMaxScan: ${SEARCH_MAX_SCAN:10000}         # Max messages to scan during search
 
 server:
   port: ${SERVER_PORT:8080}

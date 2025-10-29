@@ -4,6 +4,9 @@ import com.github.adamzv.kafkamcp.domain.Limits;
 import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
 import com.github.adamzv.kafkamcp.domain.ProblemException;
 import com.github.adamzv.kafkamcp.domain.Problems;
+import com.github.adamzv.kafkamcp.domain.SearchRequest;
+import com.github.adamzv.kafkamcp.domain.SearchResult;
+import com.github.adamzv.kafkamcp.domain.SearchTarget;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.ports.KafkaConsumerPort;
 import com.github.adamzv.kafkamcp.support.KafkaProperties;
@@ -288,5 +291,234 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
       merged.put("message", message);
     }
     return java.util.Collections.unmodifiableMap(merged);
+  }
+
+  @Override
+  public SearchResult search(SearchRequest request, Limits limits) {
+    long startTime = System.currentTimeMillis();
+
+    // Validate inputs
+    if (request.topic() == null || request.topic().isBlank()) {
+      throw Problems.invalidArgument("Topic must not be blank", Map.of());
+    }
+    if (request.searchTerm() == null || request.searchTerm().isBlank()) {
+      throw Problems.invalidArgument("Search term must not be blank", Map.of());
+    }
+    if (request.searchIn() == null || request.searchIn().isEmpty()) {
+      throw Problems.invalidArgument("Search targets (searchIn) must not be empty", Map.of());
+    }
+
+    // Resolve partitions (search across all partitions)
+    List<TopicPartition> partitions = resolvePartitionsForSearch(request.topic());
+    if (partitions.isEmpty()) {
+      return new SearchResult(List.of(), 0, false, false, System.currentTimeMillis() - startTime);
+    }
+
+    // Configure consumer
+    Properties props = new Properties();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.bootstrapServers());
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    props.put(ConsumerConfig.CLIENT_ID_CONFIG, "kafka-mcp-search-" + UUID.randomUUID());
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, "kafka-mcp-search-" + UUID.randomUUID());
+
+    try (Consumer<String, String> consumer = new KafkaConsumer<>(props)) {
+      consumer.assign(partitions);
+
+      // Apply starting position
+      String from = request.from() != null ? request.from() : "earliest";
+      applyStartingPosition(consumer, partitions, from);
+
+      // Apply timestamp filters if provided
+      if (request.startTimestamp() != null) {
+        applyTimestampFilter(consumer, partitions, request.startTimestamp());
+      }
+
+      // Search for messages
+      return performSearch(consumer, request, limits, startTime);
+    } catch (KafkaException ex) {
+      throw Problems.kafkaUnavailable(
+          "Kafka search failed",
+          mergeContext(
+              Map.of("topic", request.topic()),
+              ex.getClass().getSimpleName(),
+              ex.getMessage()
+          )
+      );
+    }
+  }
+
+  private List<TopicPartition> resolvePartitionsForSearch(String topic) {
+    DescribeTopicsOptions options = new DescribeTopicsOptions()
+        .timeoutMs(Math.toIntExact(ADMIN_TIMEOUT.toMillis()))
+        .includeAuthorizedOperations(false);
+
+    DescribeTopicsResult result = adminClient.describeTopics(List.of(topic), options);
+    Map<String, TopicDescription> descriptions = await(
+        result.allTopicNames(),
+        "describeTopicForSearch",
+        Map.of("topic", topic)
+    );
+
+    TopicDescription description = descriptions.get(topic);
+    if (description == null) {
+      throw Problems.notFound("Topic not found", Map.of("topic", topic));
+    }
+
+    return description.partitions().stream()
+        .map(info -> new TopicPartition(description.name(), info.partition()))
+        .toList();
+  }
+
+  private void applyTimestampFilter(Consumer<String, String> consumer,
+                                     List<TopicPartition> partitions,
+                                     long timestamp) {
+    Map<TopicPartition, Long> timestamps = new HashMap<>();
+    for (TopicPartition tp : partitions) {
+      timestamps.put(tp, timestamp);
+    }
+    Map<TopicPartition, OffsetAndTimestamp> offsets = consumer.offsetsForTimes(timestamps);
+    for (TopicPartition tp : partitions) {
+      OffsetAndTimestamp data = offsets.get(tp);
+      if (data != null) {
+        consumer.seek(tp, data.offset());
+      } else {
+        consumer.seekToEnd(List.of(tp));
+      }
+    }
+  }
+
+  private SearchResult performSearch(Consumer<String, String> consumer,
+                                      SearchRequest request,
+                                      Limits limits,
+                                      long startTime) {
+    List<MessageEnvelope> matches = new ArrayList<>();
+    int messagesScanned = 0;
+
+    int maxResults = request.limit() != null ?
+        Math.min(request.limit(), limits.searchMaxResults()) : limits.searchMaxResults();
+    int maxScan = request.maxScan() != null ?
+        request.maxScan() : limits.searchMaxScan();
+
+    boolean caseSensitive = request.caseSensitive() != null && request.caseSensitive();
+    String searchTerm = caseSensitive ? request.searchTerm() : request.searchTerm().toLowerCase();
+
+    long deadline = System.nanoTime() + CALL_TIMEOUT.toNanos();
+
+    while (System.nanoTime() < deadline
+        && matches.size() < maxResults
+        && messagesScanned < maxScan) {
+
+      ConsumerRecords<String, String> records = consumer.poll(POLL_TIMEOUT);
+      if (records.isEmpty()) {
+        continue;
+      }
+
+      for (ConsumerRecord<String, String> record : records) {
+        if (matches.size() >= maxResults || messagesScanned >= maxScan) {
+          break;
+        }
+
+        messagesScanned++;
+
+        // Apply timestamp filters
+        if (request.startTimestamp() != null && record.timestamp() < request.startTimestamp()) {
+          continue;
+        }
+        if (request.endTimestamp() != null && record.timestamp() > request.endTimestamp()) {
+          continue;
+        }
+
+        // Check if message matches search criteria
+        if (matchesSearch(record, request.searchIn(), searchTerm, caseSensitive)) {
+          Map<String, String> headers = new LinkedHashMap<>();
+          for (Header header : record.headers()) {
+            byte[] valueBytes = header.value();
+            headers.put(header.key(), valueBytes == null ? null : new String(valueBytes, StandardCharsets.UTF_8));
+          }
+
+          matches.add(new MessageEnvelope(
+              record.key(),
+              java.util.Collections.unmodifiableMap(new LinkedHashMap<>(headers)),
+              record.value(),
+              null,
+              record.timestamp(),
+              record.partition(),
+              record.offset()
+          ));
+        }
+      }
+    }
+
+    // Sort by timestamp for consistent ordering
+    matches.sort((m1, m2) -> {
+      int timestampCompare = Long.compare(m1.timestamp(), m2.timestamp());
+      if (timestampCompare != 0) {
+        return timestampCompare;
+      }
+      int partitionCompare = Integer.compare(m1.partition(), m2.partition());
+      if (partitionCompare != 0) {
+        return partitionCompare;
+      }
+      return Long.compare(m1.offset(), m2.offset());
+    });
+
+    long searchDuration = System.currentTimeMillis() - startTime;
+    boolean limitReached = matches.size() >= maxResults;
+    boolean maxScanReached = messagesScanned >= maxScan;
+
+    return new SearchResult(
+        List.copyOf(matches),
+        messagesScanned,
+        limitReached,
+        maxScanReached,
+        searchDuration
+    );
+  }
+
+  private boolean matchesSearch(ConsumerRecord<String, String> record,
+                                  List<SearchTarget> searchIn,
+                                  String searchTerm,
+                                  boolean caseSensitive) {
+    for (SearchTarget target : searchIn) {
+      switch (target) {
+        case KEY:
+          if (record.key() != null) {
+            String key = caseSensitive ? record.key() : record.key().toLowerCase();
+            if (key.contains(searchTerm)) {
+              return true;
+            }
+          }
+          break;
+        case VALUE:
+          if (record.value() != null) {
+            String value = caseSensitive ? record.value() : record.value().toLowerCase();
+            if (value.contains(searchTerm)) {
+              return true;
+            }
+          }
+          break;
+        case HEADERS:
+          for (Header header : record.headers()) {
+            // Search in header name
+            String headerName = caseSensitive ? header.key() : header.key().toLowerCase();
+            if (headerName.contains(searchTerm)) {
+              return true;
+            }
+            // Search in header value
+            if (header.value() != null) {
+              String headerValue = new String(header.value(), StandardCharsets.UTF_8);
+              headerValue = caseSensitive ? headerValue : headerValue.toLowerCase();
+              if (headerValue.contains(searchTerm)) {
+                return true;
+              }
+            }
+          }
+          break;
+      }
+    }
+    return false;
   }
 }
