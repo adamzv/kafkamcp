@@ -1,5 +1,8 @@
 name: Build and Push Docker Images
 
+# This workflow builds containerized Docker images (both JVM and native)
+# Native images are built for multiple architectures (amd64 and arm64)
+
 on:
   push:
     branches:
@@ -129,7 +132,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
   summary:
     name: Build Summary

@@ -10,13 +10,21 @@ import com.github.adamzv.kafkamcp.domain.Limits;
 import com.github.adamzv.kafkamcp.domain.MessageEnvelope;
 import com.github.adamzv.kafkamcp.domain.ProduceRequest;
 import com.github.adamzv.kafkamcp.domain.ProduceResult;
+import com.github.adamzv.kafkamcp.domain.SearchRequest;
+import com.github.adamzv.kafkamcp.domain.SearchResult;
+import com.github.adamzv.kafkamcp.domain.SearchTarget;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.domain.TopicDescriptionResult;
 import com.github.adamzv.kafkamcp.domain.TopicPartitionDetail;
 import com.github.adamzv.kafkamcp.support.ApplicationConfig;
 import com.github.adamzv.kafkamcp.support.KafkaProperties;
 import com.github.adamzv.kafkamcp.support.LimitsProperties;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -217,5 +225,113 @@ class KafkaAdaptersIntegrationTest {
       assertNotNull(lagInfo.lag(), "Lag should not be null");
       assertTrue(lagInfo.lag() >= 0, "Lag should be non-negative");
     });
+  }
+
+  @Test
+  void searchMessagesFindsKeywordsInComplexJsonPayloads() throws Exception {
+    String topic = "search-demo";
+    adminClient.createTopics(List.of(new NewTopic(topic, 1, (short) 1)))
+        .all()
+        .get(10, TimeUnit.SECONDS);
+
+    // Load product messages from external JSON file
+    List<String> productMessages = loadProductMessagesFromFile("/search_topic.json");
+    assertFalse(productMessages.isEmpty(), "Should load product messages from file");
+    assertEquals(10, productMessages.size(), "Should load 10 product messages");
+
+    // Produce all messages to the topic
+    for (int i = 0; i < productMessages.size(); i++) {
+      String message = productMessages.get(i);
+      String productId = "product-" + (10001 + i);
+      ProduceRequest request = new ProduceRequest(topic, "raw-string", productId, Map.of(), message);
+      producerAdapter.produce(request);
+
+      if (i < productMessages.size() - 1) {
+        Thread.sleep(50); // Small delay between messages to ensure different timestamps
+      }
+    }
+
+    Thread.sleep(500); // Wait for all messages to be fully written to Kafka
+
+    // Test 1: Search for "USD" - should find all 10 messages (all have "currency": "USD")
+    SearchRequest searchUSD = new SearchRequest(
+        topic,
+        "USD",
+        List.of(SearchTarget.VALUE),
+        "earliest",
+        100,
+        10000,
+        true,
+        null,
+        null
+    );
+    SearchResult resultUSD = consumerAdapter.search(searchUSD, limits);
+    assertEquals(10, resultUSD.messages().size(), "Search for 'USD' should find all 10 product messages");
+    assertTrue(resultUSD.messages().stream().allMatch(msg -> msg.valueString().contains("USD")),
+        "All messages should contain 'USD'");
+
+    // Test 2: Search for "10001" - should find only the first message (productId: "10001")
+    SearchRequest search10001 = new SearchRequest(
+        topic,
+        "10001",
+        List.of(SearchTarget.VALUE),
+        "earliest",
+        100,
+        10000,
+        true,
+        null,
+        null
+    );
+    SearchResult result10001 = consumerAdapter.search(search10001, limits);
+    assertEquals(1, result10001.messages().size(), "Search for '10001' should find only the first product message");
+    assertTrue(result10001.messages().get(0).valueString().contains("10001"),
+        "Found message should contain '10001'");
+    assertTrue(result10001.messages().get(0).valueString().contains("4K Ultra HD Smart TV"),
+        "Found message should be the 4K TV product");
+
+    // Test 3: Search for "json" - should find all 10 messages (all have "datacontenttype": "application/json")
+    SearchRequest searchJson = new SearchRequest(
+        topic,
+        "json",
+        List.of(SearchTarget.VALUE),
+        "earliest",
+        100,
+        10000,
+        false, // case insensitive
+        null,
+        null
+    );
+    SearchResult resultJson = consumerAdapter.search(searchJson, limits);
+    assertEquals(10, resultJson.messages().size(), "Search for 'json' should find all 10 product messages");
+    assertTrue(resultJson.messages().stream().allMatch(msg -> msg.valueString().toLowerCase().contains("json")),
+        "All messages should contain 'json'");
+  }
+
+  /**
+   * Helper method to load product messages from a JSON file in test resources.
+   *
+   * @param resourcePath Path to the JSON file in test resources
+   * @return List of JSON message strings
+   */
+  private static List<String> loadProductMessagesFromFile(String resourcePath) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    List<String> messages = new ArrayList<>();
+
+    try (InputStream is = KafkaAdaptersIntegrationTest.class.getResourceAsStream(resourcePath)) {
+      if (is == null) {
+        throw new IOException("Resource not found: " + resourcePath);
+      }
+
+      JsonNode rootNode = mapper.readTree(is);
+      if (!rootNode.isArray()) {
+        throw new IOException("Expected JSON array in resource: " + resourcePath);
+      }
+
+      for (JsonNode node : rootNode) {
+        messages.add(mapper.writeValueAsString(node));
+      }
+    }
+
+    return messages;
   }
 }

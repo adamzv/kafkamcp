@@ -133,6 +133,8 @@
   </build>
 
   <profiles>
+    <!-- Native image profile for GraalVM compilation -->
+    <!-- Used by Dockerfile.native for multi-architecture Docker builds -->
     <profile>
       <id>native</id>
       <build>
@@ -141,6 +143,13 @@
             <groupId>org.graalvm.buildtools</groupId>
             <artifactId>native-maven-plugin</artifactId>
             <version>0.10.2</version>
+            <configuration>
+              <imageName>${project.artifactId}</imageName>
+              <buildArgs>
+                <buildArg>--no-fallback</buildArg>
+                <buildArg>-H:+ReportExceptionStackTraces</buildArg>
+              </buildArgs>
+            </configuration>
             <executions>
               <execution>
                 <goals>
