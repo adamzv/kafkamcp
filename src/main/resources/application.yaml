@@ -20,6 +20,20 @@ spring:
 
 kafka:
   bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+  security:
+    enabled: ${KAFKA_SECURITY_ENABLED:false}
+    sasl:
+      mechanism: ${KAFKA_SASL_MECHANISM:PLAIN}
+      jaasConfig: ${KAFKA_SASL_JAAS_CONFIG:}
+      username: ${KAFKA_SASL_USERNAME:}
+      password: ${KAFKA_SASL_PASSWORD:}
+    ssl:
+      protocol: ${KAFKA_SSL_PROTOCOL:TLSv1.3}
+      truststoreLocation: ${KAFKA_SSL_TRUSTSTORE_LOCATION:}
+      truststorePassword: ${KAFKA_SSL_TRUSTSTORE_PASSWORD:}
+      keystoreLocation: ${KAFKA_SSL_KEYSTORE_LOCATION:}
+      keystorePassword: ${KAFKA_SSL_KEYSTORE_PASSWORD:}
+      keyPassword: ${KAFKA_SSL_KEY_PASSWORD:}
 
 limits:
   messagesPerCall: ${LIMIT_MESSAGES_PER_CALL:200} # 200 messages per call

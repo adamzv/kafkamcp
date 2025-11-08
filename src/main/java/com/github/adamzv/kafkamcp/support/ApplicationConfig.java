@@ -79,6 +79,12 @@ public class ApplicationConfig {
     props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.bootstrapServers());
     props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, timeoutMs);
     props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, timeoutMs);
+
+    // Apply security configuration if enabled
+    if (kafkaProperties.security() != null) {
+      SecurityConfigHelper.applySecurityConfig(props, kafkaProperties.security());
+    }
+
     return AdminClient.create(props);
   }
 
@@ -91,6 +97,12 @@ public class ApplicationConfig {
     props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+    // Apply security configuration if enabled
+    if (kafkaProperties.security() != null) {
+      SecurityConfigHelper.applySecurityConfig(props, kafkaProperties.security());
+    }
+
     return new KafkaProducer<>(props);
   }
 

@@ -61,7 +61,14 @@ class KafkaAdaptersIntegrationTest {
   static void setUp() {
     LimitsProperties limitsProperties = new LimitsProperties(200, 1_000_000, 262_144, 100, 10000);
     ApplicationConfig config = new ApplicationConfig(limitsProperties);
-    KafkaProperties kafkaProperties = new KafkaProperties(KAFKA.getBootstrapServers());
+    KafkaProperties kafkaProperties = new KafkaProperties(
+        KAFKA.getBootstrapServers(),
+        new KafkaProperties.SecurityConfig(
+            false,
+            new KafkaProperties.SaslConfig(null, null, null, null),
+            new KafkaProperties.SslConfig(null, null, null, null, null, null)
+        )
+    );
 
     limits = config.limits();
     adminClient = config.adminClient(kafkaProperties);
