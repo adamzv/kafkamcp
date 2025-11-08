@@ -1,0 +1,302 @@
+[
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10001",
+    "id": "f8a132b4-8b31-4e2c-81f1-2a33f657d123",
+    "time": "2025-11-07T16:10:00Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10001",
+      "sku": "SKU-ELC-101",
+      "name": "4K Ultra HD Smart TV 55\"",
+      "category": "Electronics/TV",
+      "price": { "currency": "USD", "value": 499.99 },
+      "inventory": {
+        "warehouseId": "WHS-001",
+        "quantityOnHand": 120,
+        "quantityReserved": 10,
+        "reorderThreshold": 20,
+        "lastRestocked": "2025-10-31T12:00:00Z"
+      },
+      "supplier": {
+        "id": "SUP-900",
+        "name": "VisionTech Distributors",
+        "contactEmail": "sales@visiontech.com"
+      },
+      "tags": ["electronics", "tv", "smart", "4k"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10002",
+    "id": "c3e5113f-6c4d-47c9-a6bb-5db8a712b1a0",
+    "time": "2025-11-07T16:10:05Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10002",
+      "sku": "SKU-HME-204",
+      "name": "Smart LED Desk Lamp",
+      "category": "Home/Lighting",
+      "price": { "currency": "USD", "value": 39.95 },
+      "inventory": {
+        "warehouseId": "WHS-002",
+        "quantityOnHand": 480,
+        "quantityReserved": 42,
+        "reorderThreshold": 75,
+        "lastRestocked": "2025-11-05T09:30:00Z"
+      },
+      "supplier": {
+        "id": "SUP-456",
+        "name": "BrightHome Solutions Ltd.",
+        "contactEmail": "orders@brighthome.com"
+      },
+      "tags": ["lighting", "home", "smart", "LED"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10003",
+    "id": "dc712fa7-8aa7-4a40-b61d-5243cbd1b992",
+    "time": "2025-11-07T16:10:10Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10003",
+      "sku": "SKU-KTC-009",
+      "name": "Stainless Steel Electric Kettle",
+      "category": "Kitchen/Appliances",
+      "price": { "currency": "USD", "value": 29.50 },
+      "inventory": {
+        "warehouseId": "WHS-001",
+        "quantityOnHand": 300,
+        "quantityReserved": 18,
+        "reorderThreshold": 40,
+        "lastRestocked": "2025-11-03T10:00:00Z"
+      },
+      "supplier": {
+        "id": "SUP-222",
+        "name": "KitchenPro Imports",
+        "contactEmail": "support@kitchenpro.com"
+      },
+      "tags": ["kitchen", "appliance", "electric", "stainless"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10004",
+    "id": "aa4e3c1b-16b0-4af0-a8f5-2ed870fd23e7",
+    "time": "2025-11-07T16:10:15Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10004",
+      "sku": "SKU-APP-321",
+      "name": "Men’s Running Shoes – Size 10",
+      "category": "Apparel/Shoes",
+      "price": { "currency": "USD", "value": 89.99 },
+      "inventory": {
+        "warehouseId": "WHS-004",
+        "quantityOnHand": 200,
+        "quantityReserved": 25,
+        "reorderThreshold": 50,
+        "lastRestocked": "2025-11-02T14:15:00Z"
+      },
+      "supplier": {
+        "id": "SUP-334",
+        "name": "StrideWear Co.",
+        "contactEmail": "orders@stridewear.com"
+      },
+      "tags": ["apparel", "running", "shoes", "sportswear"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10005",
+    "id": "fe2138cf-c9da-4239-9670-cb4bb93c46a9",
+    "time": "2025-11-07T16:10:20Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10005",
+      "sku": "SKU-TOY-888",
+      "name": "Remote Control Drone X200",
+      "category": "Toys/Electronics",
+      "price": { "currency": "USD", "value": 129.00 },
+      "inventory": {
+        "warehouseId": "WHS-003",
+        "quantityOnHand": 95,
+        "quantityReserved": 12,
+        "reorderThreshold": 15,
+        "lastRestocked": "2025-11-01T08:45:00Z"
+      },
+      "supplier": {
+        "id": "SUP-789",
+        "name": "SkyTech Toys Ltd.",
+        "contactEmail": "sales@skytechtoys.com"
+      },
+      "tags": ["toys", "electronics", "drone", "remote"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10006",
+    "id": "2b5f913d-1f63-4e13-b727-1e4211f51012",
+    "time": "2025-11-07T16:10:25Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10006",
+      "sku": "SKU-OFC-411",
+      "name": "Ergonomic Office Chair – Black",
+      "category": "Office/Furniture",
+      "price": { "currency": "USD", "value": 199.99 },
+      "inventory": {
+        "warehouseId": "WHS-002",
+        "quantityOnHand": 340,
+        "quantityReserved": 30,
+        "reorderThreshold": 60,
+        "lastRestocked": "2025-10-29T11:20:00Z"
+      },
+      "supplier": {
+        "id": "SUP-118",
+        "name": "ComfortWorks LLC",
+        "contactEmail": "info@comfortworks.com"
+      },
+      "tags": ["office", "chair", "furniture", "ergonomic"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10007",
+    "id": "edb723f1-cb28-4ad0-9823-833d087b0a5b",
+    "time": "2025-11-07T16:10:30Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10007",
+      "sku": "SKU-SPT-701",
+      "name": "Yoga Mat – Non-Slip Eco",
+      "category": "Sports/Fitness",
+      "price": { "currency": "USD", "value": 24.95 },
+      "inventory": {
+        "warehouseId": "WHS-005",
+        "quantityOnHand": 800,
+        "quantityReserved": 60,
+        "reorderThreshold": 100,
+        "lastRestocked": "2025-11-04T09:00:00Z"
+      },
+      "supplier": {
+        "id": "SUP-452",
+        "name": "FlexLife Gear",
+        "contactEmail": "hello@flexlifegear.com"
+      },
+      "tags": ["sports", "yoga", "fitness", "eco"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10008",
+    "id": "74b91c3e-d4f7-463b-89b2-1d9d53fdd6f1",
+    "time": "2025-11-07T16:10:35Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10008",
+      "sku": "SKU-GRM-110",
+      "name": "Organic Green Tea – 100 Bags",
+      "category": "Grocery/Beverages",
+      "price": { "currency": "USD", "value": 14.25 },
+      "inventory": {
+        "warehouseId": "WHS-006",
+        "quantityOnHand": 650,
+        "quantityReserved": 70,
+        "reorderThreshold": 150,
+        "lastRestocked": "2025-11-06T07:30:00Z"
+      },
+      "supplier": {
+        "id": "SUP-620",
+        "name": "PureLeaf Organics",
+        "contactEmail": "orders@pureleaf.com"
+      },
+      "tags": ["grocery", "tea", "organic", "beverages"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10009",
+    "id": "6e2acac1-729f-4f12-a5cb-07e801dc476a",
+    "time": "2025-11-07T16:10:40Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10009",
+      "sku": "SKU-BKS-222",
+      "name": "“Mastering Cloud Architecture” – Hardcover",
+      "category": "Books/Technology",
+      "price": { "currency": "USD", "value": 59.00 },
+      "inventory": {
+        "warehouseId": "WHS-004",
+        "quantityOnHand": 150,
+        "quantityReserved": 10,
+        "reorderThreshold": 30,
+        "lastRestocked": "2025-10-28T13:00:00Z"
+      },
+      "supplier": {
+        "id": "SUP-777",
+        "name": "TechBooks Publishing",
+        "contactEmail": "info@techbooks.com"
+      },
+      "tags": ["books", "technology", "cloud", "architecture"],
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "specversion": "1.0",
+    "type": "com.example.inventory.product.updated",
+    "source": "/inventory-service/products/10010",
+    "id": "3c4b8a2e-d509-4e5b-a281-97a1ee8bdf42",
+    "time": "2025-11-07T16:10:45Z",
+    "datacontenttype": "application/json",
+    "subject": "Product inventory update event",
+    "data": {
+      "productId": "10010",
+      "sku": "SKU-GAD-990",
+      "name": "Portable Power Bank 20000mAh",
+      "category": "Electronics/Accessories",
+      "price": { "currency": "USD", "value": 45.99 },
+      "inventory": {
+        "warehouseId": "WHS-001",
+        "quantityOnHand": 410,
+        "quantityReserved": 55,
+        "reorderThreshold": 75,
+        "lastRestocked": "2025-11-06T15:20:00Z"
+      },
+      "supplier": {
+        "id": "SUP-512",
+        "name": "VoltEdge Supplies",
+        "contactEmail": "sales@voltedge.com"
+      },
+      "tags": ["electronics", "battery", "charger", "portable"],
+      "status": "ACTIVE"
+    }
+  }
+]

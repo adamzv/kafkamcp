@@ -239,7 +239,48 @@ docker run --rm -p 8080:8080 \
   kafka-mcp-native
 ```
 
-This uses GraalVM’s `native-maven-plugin` (activated via `-Pnative`) and can take several minutes plus a few gigabytes of RAM during compilation.
+This uses GraalVM's `native-maven-plugin` (activated via `-Pnative`) and can take several minutes plus a few gigabytes of RAM during compilation.
+
+The native image is built for **multiple architectures** automatically:
+- `linux/amd64` (Intel/AMD x86_64)
+- `linux/arm64` (ARM64/Apple Silicon)
+
+Pull the appropriate image for your platform:
+```bash
+# Docker will automatically select the right architecture
+docker pull ghcr.io/<owner>/kafka-mcp:native
+
+# Or specify explicitly
+docker pull ghcr.io/<owner>/kafka-mcp:native --platform linux/amd64
+docker pull ghcr.io/<owner>/kafka-mcp:native --platform linux/arm64
+```
+
+#### Performance Benefits
+
+Native images provide:
+- **Fast startup**: <1 second (vs ~3-5 seconds for JVM)
+- **Lower memory**: Reduced memory footprint (~30-50% less)
+- **Smaller image size**: ~50-80 MB vs ~200+ MB for JVM image
+
+#### GitHub Actions CI/CD
+
+The project automatically builds multi-arch Docker images via GitHub Actions:
+
+- **Trigger**: Push to `main`/`develop` branches, PRs, or tags `v*`
+- **JVM Images**: `linux/amd64`, `linux/arm64`
+- **Native Images**: `linux/amd64`, `linux/arm64`
+- **Registry**: GitHub Container Registry (ghcr.io)
+
+To create a release:
+
+```bash
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+```
+
+This builds and publishes images:
+- `ghcr.io/<owner>/kafka-mcp:v1.0.0` (JVM, multi-arch)
+- `ghcr.io/<owner>/kafka-mcp:v1.0.0-native` (Native, multi-arch)
 
 ### Metrics
 
