@@ -10,6 +10,7 @@ import com.github.adamzv.kafkamcp.domain.SearchTarget;
 import com.github.adamzv.kafkamcp.domain.TailRequest;
 import com.github.adamzv.kafkamcp.ports.KafkaConsumerPort;
 import com.github.adamzv.kafkamcp.support.KafkaProperties;
+import com.github.adamzv.kafkamcp.support.SecurityConfigHelper;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -70,6 +71,11 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     props.put(ConsumerConfig.CLIENT_ID_CONFIG, "kafka-mcp-tail-" + UUID.randomUUID());
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "kafka-mcp-tail-" + UUID.randomUUID());
+
+    // Apply security configuration if enabled
+    if (kafkaProperties.security() != null) {
+      SecurityConfigHelper.applySecurityConfig(props, kafkaProperties.security());
+    }
 
     try (Consumer<String, String> consumer = new KafkaConsumer<>(props)) {
       consumer.assign(partitions);
@@ -323,6 +329,11 @@ public class KafkaConsumerAdapter implements KafkaConsumerPort {
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     props.put(ConsumerConfig.CLIENT_ID_CONFIG, "kafka-mcp-search-" + UUID.randomUUID());
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "kafka-mcp-search-" + UUID.randomUUID());
+
+    // Apply security configuration if enabled
+    if (kafkaProperties.security() != null) {
+      SecurityConfigHelper.applySecurityConfig(props, kafkaProperties.security());
+    }
 
     try (Consumer<String, String> consumer = new KafkaConsumer<>(props)) {
       consumer.assign(partitions);

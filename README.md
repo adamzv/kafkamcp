@@ -207,6 +207,109 @@ All settings live in `src/main/resources/application.yaml`. Override the importa
 | `spring.ai.mcp.server.base-url` | `MCP_BASE_URL` | `http://localhost:8080` |
 | `management.endpoints.web.exposure.include` | n/a | `prometheus,health,info` |
 
+### Security Configuration
+
+The server supports secured Kafka connections with SASL authentication and SSL/TLS encryption. Security is **disabled by default** for backward compatibility.
+
+#### SASL Authentication
+
+Supported mechanisms: `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`
+
+**SASL PLAIN with username/password:**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SASL_MECHANISM=PLAIN
+export KAFKA_SASL_USERNAME=alice
+export KAFKA_SASL_PASSWORD=secret-password
+```
+
+**SASL SCRAM-SHA-256:**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SASL_MECHANISM=SCRAM-SHA-256
+export KAFKA_SASL_USERNAME=bob
+export KAFKA_SASL_PASSWORD=secure-password
+```
+
+**Manual JAAS configuration (advanced):**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SASL_MECHANISM=PLAIN
+export KAFKA_SASL_JAAS_CONFIG='org.apache.kafka.common.security.plain.PlainLoginModule required username="alice" password="secret";'
+```
+
+#### SSL/TLS Encryption
+
+**SSL with truststore (server certificate validation):**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SSL_TRUSTSTORE_LOCATION=/etc/kafka/certs/truststore.jks
+export KAFKA_SSL_TRUSTSTORE_PASSWORD=truststore-password
+```
+
+**Mutual TLS (client certificate authentication):**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SSL_TRUSTSTORE_LOCATION=/etc/kafka/certs/truststore.jks
+export KAFKA_SSL_TRUSTSTORE_PASSWORD=truststore-password
+export KAFKA_SSL_KEYSTORE_LOCATION=/etc/kafka/certs/keystore.jks
+export KAFKA_SSL_KEYSTORE_PASSWORD=keystore-password
+export KAFKA_SSL_KEY_PASSWORD=key-password
+```
+
+#### Combined SASL + SSL
+
+**SASL PLAIN over SSL (recommended for production):**
+```bash
+export KAFKA_SECURITY_ENABLED=true
+export KAFKA_SASL_MECHANISM=PLAIN
+export KAFKA_SASL_USERNAME=alice
+export KAFKA_SASL_PASSWORD=secret
+export KAFKA_SSL_TRUSTSTORE_LOCATION=/etc/kafka/certs/truststore.jks
+export KAFKA_SSL_TRUSTSTORE_PASSWORD=truststore-password
+```
+
+#### Docker with Security
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e KAFKA_BOOTSTRAP_SERVERS=kafka.example.com:9093 \
+  -e KAFKA_SECURITY_ENABLED=true \
+  -e KAFKA_SASL_MECHANISM=SCRAM-SHA-256 \
+  -e KAFKA_SASL_USERNAME=mcp-user \
+  -e KAFKA_SASL_PASSWORD=secure-pass \
+  -e KAFKA_SSL_TRUSTSTORE_LOCATION=/certs/truststore.jks \
+  -e KAFKA_SSL_TRUSTSTORE_PASSWORD=trust-pass \
+  -v /path/to/certs:/certs:ro \
+  kafka-mcp
+```
+
+#### Security Environment Variables
+
+| Environment Variable | Description | Required When |
+|---------------------|-------------|---------------|
+| `KAFKA_SECURITY_ENABLED` | Enable security (default: `false`) | Always for secure connections |
+| `KAFKA_SASL_MECHANISM` | SASL mechanism: `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512` | SASL auth |
+| `KAFKA_SASL_USERNAME` | SASL username | SASL auth (or use JAAS config) |
+| `KAFKA_SASL_PASSWORD` | SASL password | SASL auth (or use JAAS config) |
+| `KAFKA_SASL_JAAS_CONFIG` | Manual JAAS configuration string | SASL auth (advanced) |
+| `KAFKA_SSL_PROTOCOL` | SSL protocol version (default: `TLSv1.3`) | SSL encryption |
+| `KAFKA_SSL_TRUSTSTORE_LOCATION` | Path to truststore file | SSL encryption |
+| `KAFKA_SSL_TRUSTSTORE_PASSWORD` | Truststore password | SSL encryption |
+| `KAFKA_SSL_KEYSTORE_LOCATION` | Path to keystore file (mutual TLS) | Client certificates |
+| `KAFKA_SSL_KEYSTORE_PASSWORD` | Keystore password | Client certificates |
+| `KAFKA_SSL_KEY_PASSWORD` | Private key password | Client certificates |
+
+#### Security Best Practices
+
+- **Never commit credentials** to version control
+- Use **secrets management** (Kubernetes Secrets, AWS Secrets Manager, etc.)
+- Prefer **SASL_SSL** (SASL + SSL) for production deployments
+- Use **SCRAM** mechanisms over PLAIN when possible
+- Validate certificates by providing proper truststores
+- Rotate credentials regularly
+- Use **mutual TLS** for highest security requirements
+
 ### Run the MCP Server
 ```bash
 ./mvnw spring-boot:run \
